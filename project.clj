@@ -1,4 +1,4 @@
-(defproject metabase/mbql "1.0.0-SNAPSHOT"
+(defproject metabase/mbql "1.0.0"
   :description "Shared things used across several Metabase projects, such as i18n and config."
   :url "https://github.com/metabase/mbql"
   :min-lein-version "2.5.0"
