@@ -17,7 +17,7 @@
    "lint"                      ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"]]}
 
   :dependencies
-  [[org.clojure/core.match "0.3.0-alpha4"]
+  [[org.clojure/core.match "0.3.0"]
    [medley "1.2.0"]
    [metabase/common "1.0.1"]
    [metabase/schema-util "1.0.0"]
