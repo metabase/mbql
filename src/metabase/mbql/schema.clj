@@ -249,7 +249,8 @@
 ;; wouldn't it
 (defclause aggregation, aggregation-clause-index s/Int)
 
-(def ^:private FieldOrAggregationReference
+(def FieldOrAggregationReference
+  "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
   (s/if (partial is-clause? :aggregation)
     aggregation
     Field))
