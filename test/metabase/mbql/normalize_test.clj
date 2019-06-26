@@ -120,6 +120,11 @@
   {:query {:aggregation [:+ [:sum 10] [:sum 20] [:sum 30]]}}
   (#'normalize/normalize-tokens {:query {:aggregation ["+" ["sum" 10] ["SUM" 20] ["sum" 30]]}}))
 
+;; expression ags should handle datetime arithemtics
+(expect
+  {:query {:expressions {:prev_month [:+ [:field-id 13] [:interval -1 :month]]}}}
+  (#'normalize/normalize-tokens {:query {:expressions {:prev_month ["+" ["field-id" 13] ["interval" -1 "month"]]}}}))
+
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 

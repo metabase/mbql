@@ -798,3 +798,10 @@
 (expect
   Exception
   (mbql.u/->joined-field "a" [:datetime-field [:joined-field "a" [:field-id 1]] :month]))
+
+(expect
+  (mbql.u/datetime-arithmetics? [:+ [:field-id 13] [:interval -1 :month]]))
+
+(expect
+  false
+  (mbql.u/datetime-arithmetics? [:+ [:field-id 13] 3]))
