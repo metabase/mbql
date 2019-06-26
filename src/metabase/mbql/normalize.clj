@@ -95,8 +95,8 @@
    (keyword field-type)])
 
 (defmethod normalize-mbql-clause-tokens :datetime-field
-  ;; Datetime fields look like `[:datetime-field <field> <unit>]` or `[:datetime-field <field> :as <unit>]`; normalize the
-  ;; unit, and `:as` (if present) tokens, and the Field."
+  ;; Datetime fields look like `[:datetime-field <field> <unit>]` or `[:datetime-field <field> :as <unit>]`
+  ;; normalize the unit, and `:as` (if present) tokens, and the Field."
   [[_ field as-or-unit maybe-unit]]
   (if maybe-unit
     [:datetime-field (normalize-tokens field :ignore-path) :as (mbql.u/normalize-token maybe-unit)]
