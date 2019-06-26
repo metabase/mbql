@@ -67,76 +67,76 @@
 
 (declare normalize-tokens)
 
-(defn- normalize-expression-ref-tokens
-  "For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string."
-  [_ expression-name]
-  [:expression (mbql.u/qualified-name expression-name)])
+(defmulti ^:private normalize-mbql-clause-tokens
+  (comp mbql.u/normalize-token first))
 
-(defn- normalize-binning-strategy-tokens
-  "For `:binning-strategy` clauses (which wrap other Field clauses) normalize the strategy-name and recursively
-  normalize the Field it bins."
-  ([_ field strategy-name]
-   [:binning-strategy (normalize-tokens field :ignore-path) (mbql.u/normalize-token strategy-name)])
-  ([_ field strategy-name strategy-param]
-   (conj (normalize-binning-strategy-tokens nil field strategy-name)
-         strategy-param)))
+(defmethod normalize-mbql-clause-tokens :expression
+  ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
+  [[_ expression-name]]
+  [:expression (if (keyword? expression-name)
+                 (mbql.u/qualified-name expression-name)
+                 expression-name)])
 
-(defn- normalize-field-literal-tokens
-  "Similarly, for Field literals, keep the arg as-is, but make sure it is a string."
-  [_ field-name field-type]
-  [:field-literal (mbql.u/qualified-name field-name) (keyword field-type)])
+(defmethod normalize-mbql-clause-tokens :binning-strategy
+  ;; For `:binning-strategy` clauses (which wrap other Field clauses) normalize the strategy-name and recursively
+  ;; normalize the Field it bins.
+  [[_ field strategy-name strategy-param]]
+  (if strategy-param
+    (conj (normalize-mbql-clause-tokens [:binning-strategy field strategy-name]) strategy-param)
+    [:binning-strategy (normalize-tokens field :ignore-path) (mbql.u/normalize-token strategy-name)]))
 
-(defn- normalize-datetime-field-tokens
-  "Datetime fields look like `[:datetime-field <field> <unit>]` or `[:datetime-field <field> :as <unit>]`; normalize the
-  unit, and `:as` (if present) tokens, and the Field."
-  ([_ field unit]
-   [:datetime-field (normalize-tokens field :ignore-path) (mbql.u/normalize-token unit)])
-  ([_ field _ unit]
-   [:datetime-field (normalize-tokens field :ignore-path) :as (mbql.u/normalize-token unit)]))
+(defmethod normalize-mbql-clause-tokens :field-literal
+  ;; Similarly, for Field literals, keep the arg as-is, but make sure it is a string."
+  [[_ field-name field-type]]
+  [:field-literal
+   (if (keyword? field-name)
+     (mbql.u/qualified-name field-name)
+     field-name)
+   (keyword field-type)])
 
-(defn- normalize-time-interval-tokens
-  "`time-interval`'s `unit` should get normalized, and `amount` if it's not an integer."
-  ([_ field amount unit]
-   [:time-interval
-    (normalize-tokens field :ignore-path)
-    (if (integer? amount)
-      amount
-      (mbql.u/normalize-token amount))
-    (mbql.u/normalize-token unit)])
-  ([_ field amount unit options]
-   (conj (normalize-time-interval-tokens nil field amount unit) (normalize-tokens options :ignore-path))))
+(defmethod normalize-mbql-clause-tokens :datetime-field
+  ;; Datetime fields look like `[:datetime-field <field> <unit>]` or `[:datetime-field <field> :as <unit>]`
+  ;; normalize the unit, and `:as` (if present) tokens, and the Field."
+  [[_ field as-or-unit maybe-unit]]
+  (if maybe-unit
+    [:datetime-field (normalize-tokens field :ignore-path) :as (mbql.u/normalize-token maybe-unit)]
+    [:datetime-field (normalize-tokens field :ignore-path) (mbql.u/normalize-token as-or-unit)]))
 
-(defn- normalize-relative-datetime-tokens
-  "Normalize a `relative-datetime` clause. `relative-datetime` comes in two flavors:
+(defmethod normalize-mbql-clause-tokens :time-interval
+  ;; `time-interval`'s `unit` should get normalized, and `amount` if it's not an integer."
+  [[_ field amount unit options]]
+  (if options
+    (conj (normalize-mbql-clause-tokens [:time-interval field amount unit])
+          (normalize-tokens options :ignore-path))
+    [:time-interval
+     (normalize-tokens field :ignore-path)
+     (if (integer? amount)
+       amount
+       (mbql.u/normalize-token amount))
+     (mbql.u/normalize-token unit)]))
 
-     [:relative-datetime :current]
-     [:relative-datetime -10 :day] ; amount & unit"
-  ([_ _]
-   [:relative-datetime :current])
-  ([_ amount unit]
-   [:relative-datetime amount (mbql.u/normalize-token unit)]))
+(defmethod normalize-mbql-clause-tokens :relative-datetime
+  ;; Normalize a `relative-datetime` clause. `relative-datetime` comes in two flavors:
+  ;;
+  ;;   [:relative-datetime :current]
+  ;;   [:relative-datetime -10 :day] ; amount & unit"
+  [[_ amount unit]]
+  (if unit
+    [:relative-datetime amount (mbql.u/normalize-token unit)]
+    [:relative-datetime :current]))
 
-(def ^:private mbql-clause->special-token-normalization-fn
-  "Special fns to handle token normalization for different MBQL clauses."
-  {:expression        normalize-expression-ref-tokens
-   :field-literal     normalize-field-literal-tokens
-   :datetime-field    normalize-datetime-field-tokens
-   :binning-strategy  normalize-binning-strategy-tokens
-   :time-interval     normalize-time-interval-tokens
-   :relative-datetime normalize-relative-datetime-tokens})
+(defmethod normalize-mbql-clause-tokens :interval
+  [[_ amount unit]]
+  [:interval amount (mbql.u/normalize-token unit)])
 
-(defn- normalize-mbql-clause-tokens
-  "MBQL clauses by default get just the clause name normalized (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and the
-  args are left as-is. If we need to do something special on top of that implement a fn in
-  `mbql-clause->special-token-normalization-fn` above to handle the special normalization rules"
+(defmethod normalize-mbql-clause-tokens :default
+  ;; MBQL clauses by default get just the clause name normalized (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and the
+  ;; args are left as-is.
   [[clause-name & args]]
-  (let [clause-name (mbql.u/normalize-token clause-name)]
-    (if-let [f (mbql-clause->special-token-normalization-fn clause-name)]
-      (apply f clause-name args)
-      (into [clause-name] (map #(normalize-tokens % :ignore-path) args)))))
+  (into [(mbql.u/normalize-token clause-name)] (map #(normalize-tokens % :ignore-path)) args))
 
-
-(defn- aggregation-subclause? [x]
+(defn- aggregation-subclause?
+  [x]
   (or (when ((some-fn keyword? string?) x)
         (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :*} (mbql.u/normalize-token x)))
       (when (mbql-clause? x)
