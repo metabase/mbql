@@ -507,8 +507,11 @@
   {:style/indent 1}
   [aggregation->name-fn :- (s/pred fn?), aggregations :- [mbql.s/Aggregation]]
   (replace aggregations
-    [:named ag ag-name]       [:named ag ag-name]
-    [(_ :guard keyword?) & _] [:named &match (aggregation->name-fn &match)]))
+    :named
+    &match
+
+    [(_ :guard keyword?) & _]
+    [:named &match (aggregation->name-fn &match) {:use-as-display-name? false}]))
 
 (s/defn pre-alias-and-uniquify-aggregations :- NamedAggregationsWithUniqueNames
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with

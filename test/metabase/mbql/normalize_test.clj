@@ -110,10 +110,14 @@
   {:query {:aggregation [:named [:sum 10] "My COOL AG"]}}
   (#'normalize/normalize-tokens {:query {:aggregation ["named" ["SuM" 10] "My COOL AG"]}}))
 
+(expect
+  {:query {:aggregation [:named [:sum 10] "My COOL AG" {:use-as-display-name? false}]}}
+  (#'normalize/normalize-tokens {:query {:aggregation ["named" ["SuM" 10] "My COOL AG" {:use-as-display-name? false}]}}))
+
 ;; try an expression ag
 (expect
-  {:query {:aggregation [:+ [:sum 10] [:* [:sum 20] 3]]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["+" ["sum" 10] ["*" ["SUM" 20] 3]]}}))
+ {:query {:aggregation [:+ [:sum 10] [:* [:sum 20] 3]]}}
+ (#'normalize/normalize-tokens {:query {:aggregation ["+" ["sum" 10] ["*" ["SUM" 20] 3]]}}))
 
 ;; expression ags should handle varargs
 (expect
@@ -456,10 +460,14 @@
   {:query {:aggregation [[:named [:sum [:field-id 10]] "Sum *TEN*"]]}}
   (#'normalize/canonicalize {:query {:aggregation [:named [:sum 10] "Sum *TEN*"]}}))
 
+(expect
+  {:query {:aggregation [[:named [:sum [:field-id 10]] "Sum *TEN*" {:use-as-display-name? false}]]}}
+  (#'normalize/canonicalize {:query {:aggregation [:named [:sum 10] "Sum *TEN*" {:use-as-display-name? false}]}}))
+
 ;; make sure expression aggregations work correctly
 (expect
-  {:query {:aggregation [[:+ [:sum [:field-id 10]] 2]]}}
-  (#'normalize/canonicalize {:query {:aggregation [:+ [:sum 10] 2]}}))
+ {:query {:aggregation [[:+ [:sum [:field-id 10]] 2]]}}
+ (#'normalize/canonicalize {:query {:aggregation [:+ [:sum 10] 2]}}))
 
 (expect
   {:query {:aggregation [[:+ [:sum [:field-id 10]] [:* [:sum [:field-id 20]] [:sum [:field-id 30]]]]]}}

@@ -153,8 +153,8 @@
 
     ;; named aggregation ([:named <ag> <name>])
     (is-clause? :named ag-clause)
-    (let [[_ ag ag-name] ag-clause]
-      [:named (normalize-ag-clause-tokens ag) ag-name])
+    (let [[_ wrapped-ag & more] ag-clause]
+      (into [:named (normalize-ag-clause-tokens wrapped-ag)] more))
 
     ;; something wack like {:aggregations [:count [:sum 10]]} or {:aggregations [:count :count]}
     (when (mbql-clause? ag-clause)
@@ -319,11 +319,8 @@
                                            (map (comp canonicalize-mbql-clauses canonicalize-filter)
                                                 args))))
 
-    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain}) field arg options]
-    [filter-name (wrap-implicit-field-id field) arg options]
-
-    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain}) field arg]
-    [filter-name (wrap-implicit-field-id field) arg]
+    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain}) & more]
+    (into [filter-name (wrap-implicit-field-id field)] more)
 
     [:inside field-1 field-2 & coordinates]
     (vec
@@ -357,8 +354,8 @@
     nil
 
     ;; For named aggregations (`[:named <ag> <name>]`) we want to leave as-is and just canonicalize the ag it names
-    [:named ag ag-name]
-    [:named (canonicalize-aggregation-subclause ag) ag-name]
+    [:named wrapped-ag & more]
+    (into [:named (canonicalize-aggregation-subclause wrapped-ag)] more)
 
     [(ag-type :guard #{:+ :- :* :/}) & args]
     (apply

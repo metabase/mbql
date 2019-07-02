@@ -618,12 +618,12 @@
   (name ag-name))
 
 (expect
-  [[:named [:sum [:field-id 1]] "sum"]
-   [:named [:count [:field-id 1]] "count"]
-   [:named [:sum [:field-id 1]] "sum"]
-   [:named [:avg [:field-id 1]] "avg"]
-   [:named [:sum [:field-id 1]] "sum"]
-   [:named [:min [:field-id 1]] "min"]]
+  [[:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
+   [:named [:count [:field-id 1]] "count" {:use-as-display-name? false}]
+   [:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
+   [:named [:avg [:field-id 1]]   "avg"   {:use-as-display-name? false}]
+   [:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
+   [:named [:min [:field-id 1]]   "min"   {:use-as-display-name? false}]]
   (mbql.u/pre-alias-aggregations simple-ag->name
     [[:sum [:field-id 1]]
      [:count [:field-id 1]]
@@ -634,12 +634,12 @@
 
 ;; we shouldn't change the name of ones that are already named
 (expect
-  [[:named [:sum [:field-id 1]] "sum"]
-   [:named [:count [:field-id 1]] "count"]
-   [:named [:sum [:field-id 1]] "sum"]
-   [:named [:avg [:field-id 1]] "avg"]
-   [:named [:sum [:field-id 1]] "sum_2"]
-   [:named [:min [:field-id 1]] "min"]]
+  [[:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
+   [:named [:count [:field-id 1]] "count" {:use-as-display-name? false}]
+   [:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
+   [:named [:avg [:field-id 1]]   "avg"   {:use-as-display-name? false}]
+   [:named [:sum [:field-id 1]]   "sum_2"]
+   [:named [:min [:field-id 1]]   "min"   {:use-as-display-name? false}]]
   (mbql.u/pre-alias-aggregations simple-ag->name
     [[:sum [:field-id 1]]
      [:count [:field-id 1]]
@@ -650,12 +650,12 @@
 
 ;; ok, can we do the same thing as the tests above but make those names *unique* at the same time?
 (expect
-  [[:named [:sum [:field-id 1]] "sum"]
-   [:named [:count [:field-id 1]] "count"]
-   [:named [:sum [:field-id 1]] "sum_2"]
-   [:named [:avg [:field-id 1]] "avg"]
-   [:named [:sum [:field-id 1]] "sum_3"]
-   [:named [:min [:field-id 1]] "min"]]
+  [[:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
+   [:named [:count [:field-id 1]] "count" {:use-as-display-name? false}]
+   [:named [:sum [:field-id 1]]   "sum_2" {:use-as-display-name? false}]
+   [:named [:avg [:field-id 1]]   "avg"   {:use-as-display-name? false}]
+   [:named [:sum [:field-id 1]]   "sum_3" {:use-as-display-name? false}]
+   [:named [:min [:field-id 1]]   "min"   {:use-as-display-name? false}]]
   (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
     [[:sum [:field-id 1]]
      [:count [:field-id 1]]
@@ -665,12 +665,12 @@
      [:min [:field-id 1]]]))
 
 (expect
-  [[:named [:sum [:field-id 1]] "sum"]
-   [:named [:count [:field-id 1]] "count"]
-   [:named [:sum [:field-id 1]] "sum_2"]
-   [:named [:avg [:field-id 1]] "avg"]
-   [:named [:sum [:field-id 1]] "sum_2_2"]
-   [:named [:min [:field-id 1]] "min"]]
+  [[:named [:sum [:field-id 1]]   "sum"     {:use-as-display-name? false}]
+   [:named [:count [:field-id 1]] "count"   {:use-as-display-name? false}]
+   [:named [:sum [:field-id 1]]   "sum_2"   {:use-as-display-name? false}]
+   [:named [:avg [:field-id 1]]   "avg"     {:use-as-display-name? false}]
+   [:named [:sum [:field-id 1]]   "sum_2_2"]
+   [:named [:min [:field-id 1]]   "min"     {:use-as-display-name? false}]]
   (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
     [[:sum [:field-id 1]]
      [:count [:field-id 1]]

@@ -516,7 +516,19 @@
 ;; any sort of aggregation can be wrapped in a `[:named <ag> <custom-name>]` clause, but you cannot wrap a `:named` in
 ;; a `:named`
 
-(defclause named, aggregation UnnamedAggregation, aggregation-name su/NonBlankString)
+(def NamedAggregationOptions
+  "Schema for optional options map for the `:named` aggregation clause."
+  ;; whether the supplied name should be used as the user-facing display name of the aggregation as well. `true` by
+  ;; default -- this is what we want to do if the `:named` clause was generated in the FE with a user-supplied name.
+  ;; If this clause is used internally to deduplicate/uniquify aggregation names (e.g. `sum` and `sum_2`, we should
+  ;; set this to `false` so we can try to come up with a good name for the aggregation it wraps (e.g. `sum of My
+  ;; Field`)
+  {(s/optional-key :use-as-display-name?) s/Bool}) ; default true
+
+(defclause named
+  aggregation      UnnamedAggregation
+  aggregation-name su/NonBlankString
+  options          (optional NamedAggregationOptions))
 
 (def Aggregation
   "Schema for anything that is a valid `:aggregation` clause."
