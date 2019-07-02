@@ -319,7 +319,7 @@
                                            (map (comp canonicalize-mbql-clauses canonicalize-filter)
                                                 args))))
 
-    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain}) & more]
+    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain}) field & more]
     (into [filter-name (wrap-implicit-field-id field)] more)
 
     [:inside field-1 field-2 & coordinates]

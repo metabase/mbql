@@ -679,13 +679,29 @@
      [:named [:sum [:field-id 1]] "sum_2"]
      [:min [:field-id 1]]]))
 
+;; `pre-alias-and-uniquify-aggregations` shouldn't stomp over existing options
+(expect
+ [[:named [:sum [:field-id 1]]   "sum"     {:use-as-display-name? false}]
+  [:named [:count [:field-id 1]] "count"   {:use-as-display-name? false}]
+  [:named [:sum [:field-id 1]]   "sum_2"   {:use-as-display-name? true}]
+  [:named [:avg [:field-id 1]]   "avg"     {:use-as-display-name? true}]
+  [:named [:sum [:field-id 1]]   "sum_2_2" {:use-as-display-name? true}]
+  [:named [:min [:field-id 1]]   "min"     {:use-as-display-name? false}]]
+ (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
+   [[:sum [:field-id 1]]
+    [:count [:field-id 1]]
+    [:named [:sum [:field-id 1]] "sum"   {:use-as-display-name? true}]
+    [:named [:avg [:field-id 1]] "avg"   {:use-as-display-name? true}]
+    [:named [:sum [:field-id 1]] "sum_2" {:use-as-display-name? true}]
+    [:min [:field-id 1]]]))
+
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 
 ;; should return `:limit` if set
 (expect
-  10
-  (mbql.u/query->max-rows-limit
-   {:database 1, :type :query, :query {:source-table 1, :limit 10}}))
+ 10
+ (mbql.u/query->max-rows-limit
+  {:database 1, :type :query, :query {:source-table 1, :limit 10}}))
 
 ;; should return `:page` items if set
 (expect

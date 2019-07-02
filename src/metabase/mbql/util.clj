@@ -488,10 +488,11 @@
 (s/defn uniquify-named-aggregations :- NamedAggregationsWithUniqueNames
   "Make the names of a sequence of named aggregations unique by adding suffixes such as `_2`."
   [named-aggregations :- [mbql.s/named]]
-  (map (fn [[_ ag] unique-name]
-         [:named ag unique-name])
+  (map (fn [original-clause unique-name]
+         (assoc (vec original-clause) 2 unique-name))
        named-aggregations
-       (uniquify-names (map last named-aggregations))))
+       (uniquify-names
+        (map #(nth % 2) named-aggregations))))
 
 (s/defn pre-alias-aggregations :- [mbql.s/named]
   "Wrap every aggregation clause in a `:named` clause, using the name returned by `(aggregation->name-fn ag-clause)`
