@@ -112,7 +112,8 @@
 
 (expect
   {:query {:aggregation [:named [:sum 10] "My COOL AG" {:use-as-display-name? false}]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["named" ["SuM" 10] "My COOL AG" {:use-as-display-name? false}]}}))
+  (#'normalize/normalize-tokens
+   {:query {:aggregation ["named" ["SuM" 10] "My COOL AG" {:use-as-display-name? false}]}}))
 
 ;; try an expression ag
 (expect
