@@ -151,10 +151,14 @@
     ((some-fn keyword? string?) ag-clause)
     (mbql.u/normalize-token ag-clause)
 
-    ;; named aggregation ([:named <ag> <name>])
+    ;; named aggregation ([:named <ag> <name>]) (legacy clause) should get converted to `:aggregation-options`
     (is-clause? :named ag-clause)
-    (let [[_ wrapped-ag & more] ag-clause]
-      (into [:named (normalize-ag-clause-tokens wrapped-ag)] more))
+    (let [[_ wrapped-ag ag-name] ag-clause]
+      (normalize-ag-clause-tokens [:aggregation-options wrapped-ag {:name ag-name, :display_name ag-name}]))
+
+    ;; for aggregation-options just normalized the wrapped
+    (is-clause? :aggregation-options ag-clause)
+    (update (vec ag-clause) 1 normalize-ag-clause-tokens)
 
     ;; something wack like {:aggregations [:count [:sum 10]]} or {:aggregations [:count :count]}
     (when (mbql-clause? ag-clause)
@@ -353,9 +357,12 @@
     [:rows & _]
     nil
 
-    ;; For named aggregations (`[:named <ag> <name>]`) we want to leave as-is and just canonicalize the ag it names
-    [:named wrapped-ag & more]
-    (into [:named (canonicalize-aggregation-subclause wrapped-ag)] more)
+    ;; For named aggregations (legacy clause) convert it to `:aggregation-options`
+    [:named wrapped-ag ag-name]
+    (canonicalize-aggregation-subclause [:aggregation-options wrapped-ag {:name ag-name, :display-name ag-name}])
+
+    [:aggregation-options wrapped-ag options]
+    [:aggregation-options (canonicalize-aggregation-subclause wrapped-ag) options]
 
     [(ag-type :guard #{:+ :- :* :/}) & args]
     (apply
