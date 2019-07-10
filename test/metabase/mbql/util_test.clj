@@ -585,27 +585,29 @@
   (mbql.u/uniquify-names ["count" "sum" "count" "count"]))
 
 (expect
-  [[:named [:count] "count"]
-   [:named [:sum [:field-id 1]] "sum"]
-   [:named [:count] "count_2"]
-   [:named [:count] "count_3"]]
-  (mbql.u/uniquify-named-aggregations [[:named [:count] "count"]
-                                       [:named [:sum [:field-id 1]] "sum"]
-                                       [:named [:count] "count"]
-                                       [:named [:count] "count"]]))
+ [[:aggregation-options [:count] {:name "count"}]
+  [:aggregation-options [:sum [:field-id 1]] {:name "sum"}]
+  [:aggregation-options [:count] {:name "count_2"}]
+  [:aggregation-options [:count] {:name "count_3"}]]
+ (mbql.u/uniquify-named-aggregations
+  [[:aggregation-options [:count] {:name "count"}]
+   [:aggregation-options [:sum [:field-id 1]] {:name "sum"}]
+   [:aggregation-options [:count] {:name "count"}]
+   [:aggregation-options [:count] {:name "count"}]]))
 
 ;; what if we try to trick it by using a name it would have generated?
 (expect
-  ["count" "count_2" "count_2_2"]
-  (mbql.u/uniquify-names ["count" "count" "count_2"]))
+ ["count" "count_2" "count_2_2"]
+ (mbql.u/uniquify-names ["count" "count" "count_2"]))
 
 (expect
-  [[:named [:count] "count"]
-   [:named [:count] "count_2"]
-   [:named [:count] "count_2_2"]]
-  (mbql.u/uniquify-named-aggregations [[:named [:count] "count"]
-                                       [:named [:count] "count"]
-                                       [:named [:count] "count_2"]]))
+ [[:aggregation-options [:count] {:name "count"}]
+  [:aggregation-options [:count] {:name "count_2"}]
+  [:aggregation-options [:count] {:name "count_2_2"}]]
+ (mbql.u/uniquify-named-aggregations
+  [[:aggregation-options [:count] {:name "count"}]
+   [:aggregation-options [:count] {:name "count"}]
+   [:aggregation-options [:count] {:name "count_2"}]]))
 
 ;; for wacky DBMSes like SQLServer that return blank column names sometimes let's make sure we handle those without
 ;; exploding
@@ -618,44 +620,44 @@
   (name ag-name))
 
 (expect
-  [[:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
-   [:named [:count [:field-id 1]] "count" {:use-as-display-name? false}]
-   [:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
-   [:named [:avg [:field-id 1]]   "avg"   {:use-as-display-name? false}]
-   [:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
-   [:named [:min [:field-id 1]]   "min"   {:use-as-display-name? false}]]
-  (mbql.u/pre-alias-aggregations simple-ag->name
-    [[:sum [:field-id 1]]
-     [:count [:field-id 1]]
-     [:sum [:field-id 1]]
-     [:avg [:field-id 1]]
-     [:sum [:field-id 1]]
-     [:min [:field-id 1]]]))
+ [[:aggregation-options [:sum [:field-id 1]]   {:name "sum"}]
+  [:aggregation-options [:count [:field-id 1]] {:name "count"}]
+  [:aggregation-options [:sum [:field-id 1]]   {:name "sum"}]
+  [:aggregation-options [:avg [:field-id 1]]   {:name "avg"}]
+  [:aggregation-options [:sum [:field-id 1]]   {:name "sum"}]
+  [:aggregation-options [:min [:field-id 1]]   {:name "min"}]]
+ (mbql.u/pre-alias-aggregations simple-ag->name
+   [[:sum [:field-id 1]]
+    [:count [:field-id 1]]
+    [:sum [:field-id 1]]
+    [:avg [:field-id 1]]
+    [:sum [:field-id 1]]
+    [:min [:field-id 1]]]))
 
 ;; we shouldn't change the name of ones that are already named
 (expect
-  [[:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
-   [:named [:count [:field-id 1]] "count" {:use-as-display-name? false}]
-   [:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
-   [:named [:avg [:field-id 1]]   "avg"   {:use-as-display-name? false}]
-   [:named [:sum [:field-id 1]]   "sum_2"]
-   [:named [:min [:field-id 1]]   "min"   {:use-as-display-name? false}]]
-  (mbql.u/pre-alias-aggregations simple-ag->name
-    [[:sum [:field-id 1]]
-     [:count [:field-id 1]]
-     [:sum [:field-id 1]]
-     [:avg [:field-id 1]]
-     [:named [:sum [:field-id 1]] "sum_2"]
-     [:min [:field-id 1]]]))
+ [[:aggregation-options [:sum [:field-id 1]]   {:name "sum"}]
+  [:aggregation-options [:count [:field-id 1]] {:name "count"}]
+  [:aggregation-options [:sum [:field-id 1]]   {:name "sum"}]
+  [:aggregation-options [:avg [:field-id 1]]   {:name "avg"}]
+  [:aggregation-options [:sum [:field-id 1]]   {:name "sum_2"}]
+  [:aggregation-options [:min [:field-id 1]]   {:name "min"}]]
+ (mbql.u/pre-alias-aggregations simple-ag->name
+   [[:sum [:field-id 1]]
+    [:count [:field-id 1]]
+    [:sum [:field-id 1]]
+    [:avg [:field-id 1]]
+    [:aggregation-options [:sum [:field-id 1]] {:name "sum_2"}]
+    [:min [:field-id 1]]]))
 
 ;; ok, can we do the same thing as the tests above but make those names *unique* at the same time?
 (expect
-  [[:named [:sum [:field-id 1]]   "sum"   {:use-as-display-name? false}]
-   [:named [:count [:field-id 1]] "count" {:use-as-display-name? false}]
-   [:named [:sum [:field-id 1]]   "sum_2" {:use-as-display-name? false}]
-   [:named [:avg [:field-id 1]]   "avg"   {:use-as-display-name? false}]
-   [:named [:sum [:field-id 1]]   "sum_3" {:use-as-display-name? false}]
-   [:named [:min [:field-id 1]]   "min"   {:use-as-display-name? false}]]
+ [[:aggregation-options [:sum [:field-id 1]]   {:name "sum"}  ]
+  [:aggregation-options [:count [:field-id 1]] {:name "count"}]
+  [:aggregation-options [:sum [:field-id 1]]   {:name "sum_2"}]
+  [:aggregation-options [:avg [:field-id 1]]   {:name "avg"}  ]
+  [:aggregation-options [:sum [:field-id 1]]   {:name "sum_3"}]
+  [:aggregation-options [:min [:field-id 1]]   {:name "min"}  ]]
   (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
     [[:sum [:field-id 1]]
      [:count [:field-id 1]]
@@ -665,35 +667,41 @@
      [:min [:field-id 1]]]))
 
 (expect
-  [[:named [:sum [:field-id 1]]   "sum"     {:use-as-display-name? false}]
-   [:named [:count [:field-id 1]] "count"   {:use-as-display-name? false}]
-   [:named [:sum [:field-id 1]]   "sum_2"   {:use-as-display-name? false}]
-   [:named [:avg [:field-id 1]]   "avg"     {:use-as-display-name? false}]
-   [:named [:sum [:field-id 1]]   "sum_2_2"]
-   [:named [:min [:field-id 1]]   "min"     {:use-as-display-name? false}]]
-  (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-    [[:sum [:field-id 1]]
-     [:count [:field-id 1]]
-     [:sum [:field-id 1]]
-     [:avg [:field-id 1]]
-     [:named [:sum [:field-id 1]] "sum_2"]
-     [:min [:field-id 1]]]))
-
-;; `pre-alias-and-uniquify-aggregations` shouldn't stomp over existing options
-(expect
- [[:named [:sum [:field-id 1]]   "sum"     {:use-as-display-name? false}]
-  [:named [:count [:field-id 1]] "count"   {:use-as-display-name? false}]
-  [:named [:sum [:field-id 1]]   "sum_2"   {:use-as-display-name? true}]
-  [:named [:avg [:field-id 1]]   "avg"     {:use-as-display-name? true}]
-  [:named [:sum [:field-id 1]]   "sum_2_2" {:use-as-display-name? true}]
-  [:named [:min [:field-id 1]]   "min"     {:use-as-display-name? false}]]
+ [[:aggregation-options [:sum [:field-id 1]]   {:name "sum"}]
+  [:aggregation-options [:count [:field-id 1]] {:name "count"}]
+  [:aggregation-options [:sum [:field-id 1]]   {:name "sum_2"}]
+  [:aggregation-options [:avg [:field-id 1]]   {:name "avg"}]
+  [:aggregation-options [:sum [:field-id 1]]   {:name "sum_2_2"}]
+  [:aggregation-options [:min [:field-id 1]]   {:name "min"}]]
  (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
    [[:sum [:field-id 1]]
     [:count [:field-id 1]]
-    [:named [:sum [:field-id 1]] "sum"   {:use-as-display-name? true}]
-    [:named [:avg [:field-id 1]] "avg"   {:use-as-display-name? true}]
-    [:named [:sum [:field-id 1]] "sum_2" {:use-as-display-name? true}]
+    [:sum [:field-id 1]]
+    [:avg [:field-id 1]]
+    [:aggregation-options [:sum [:field-id 1]] {:name "sum_2"}]
     [:min [:field-id 1]]]))
+
+;; if `:aggregation-options` only specifies `:display-name` it should still a new `:name`.
+;; `pre-alias-and-uniquify-aggregations` shouldn't stomp over display name
+(expect
+ [[:aggregation-options [:sum [:field-id 1]] {:name "sum"}]
+  [:aggregation-options [:sum [:field-id 1]] {:name "sum_2"}]
+  [:aggregation-options [:sum [:field-id 1]] {:display-name "Sum of Field 1", :name "sum_3"}]]
+ (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
+   [[:sum [:field-id 1]]
+    [:sum [:field-id 1]]
+    [:aggregation-options [:sum [:field-id 1]] {:display-name "Sum of Field 1"}]]))
+
+;; if both are specified, `display-name` should still be propogated
+(expect
+ [[:aggregation-options [:sum [:field-id 1]] {:name "sum"}]
+  [:aggregation-options [:sum [:field-id 1]] {:name "sum_2"}]
+  [:aggregation-options [:sum [:field-id 1]] {:name "sum_2_2", :display_name "Sum of Field 1"}]]
+ (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
+   [[:sum [:field-id 1]]
+    [:sum [:field-id 1]]
+    [:aggregation-options [:sum [:field-id 1]] {:name "sum_2", :display_name "Sum of Field 1"}]]))
+
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 

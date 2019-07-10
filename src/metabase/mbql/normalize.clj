@@ -151,14 +151,10 @@
     ((some-fn keyword? string?) ag-clause)
     (mbql.u/normalize-token ag-clause)
 
-    ;; named aggregation ([:named <ag> <name>]) (legacy clause) should get converted to `:aggregation-options`
+    ;; named aggregation ([:named <ag> <name>])
     (is-clause? :named ag-clause)
-    (let [[_ wrapped-ag ag-name] ag-clause]
-      (normalize-ag-clause-tokens [:aggregation-options wrapped-ag {:name ag-name, :display_name ag-name}]))
-
-    ;; for aggregation-options just normalized the wrapped
-    (is-clause? :aggregation-options ag-clause)
-    (update (vec ag-clause) 1 normalize-ag-clause-tokens)
+    (let [[_ wrapped-ag & more] ag-clause]
+      (into [:named (normalize-ag-clause-tokens wrapped-ag)] more))
 
     ;; something wack like {:aggregations [:count [:sum 10]]} or {:aggregations [:count :count]}
     (when (mbql-clause? ag-clause)
@@ -357,12 +353,20 @@
     [:rows & _]
     nil
 
-    ;; For named aggregations (legacy clause) convert it to `:aggregation-options`
-    [:named wrapped-ag ag-name]
-    (canonicalize-aggregation-subclause [:aggregation-options wrapped-ag {:name ag-name, :display-name ag-name}])
-
+    ;; for aggregations wrapped in aggregation-options we can leave it as-is and just canonicalize the subclause
     [:aggregation-options wrapped-ag options]
     [:aggregation-options (canonicalize-aggregation-subclause wrapped-ag) options]
+
+    ;; for legacy `:named` aggregations convert them to a new-style `:aggregation-options` clause.
+    ;;
+    ;; 99.99% of clauses should have no options, however if they do and `:use-as-display-name?` is false (default is
+    ;; true) then generate options to change `:name` rather than `:display-name`
+    [:named wrapped-ag ag-name & more]
+    (canonicalize-aggregation-subclause
+     [:aggregation-options wrapped-ag (let [[{:keys [use-as-display-name?]}] more]
+                                        (if (false? use-as-display-name?)
+                                          {:name ag-name}
+                                          {:display-name ag-name}))])
 
     [(ag-type :guard #{:+ :- :* :/}) & args]
     (apply

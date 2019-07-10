@@ -105,7 +105,7 @@
   {:query {:aggregation [:count [:sum 10] [:count 20] :count]}}
   (#'normalize/normalize-tokens {:query {:aggregation ["count" ["sum" 10] ["count" 20] "count"]}}))
 
-;; try an ag that is named
+;; try an ag that is named using legacy `:named` clause
 (expect
   {:query {:aggregation [:named [:sum 10] "My COOL AG"]}}
   (#'normalize/normalize-tokens {:query {:aggregation ["named" ["SuM" 10] "My COOL AG"]}}))
@@ -114,6 +114,12 @@
   {:query {:aggregation [:named [:sum 10] "My COOL AG" {:use-as-display-name? false}]}}
   (#'normalize/normalize-tokens
    {:query {:aggregation ["named" ["SuM" 10] "My COOL AG" {:use-as-display-name? false}]}}))
+
+;; try w/ `:aggregation-options`, the replacement for `:named`
+(expect
+ {:query {:aggregation [:aggregation-options [:sum 10] {:display-name "My COOL AG"}]}}
+ (#'normalize/normalize-tokens
+  {:query {:aggregation ["aggregation_options" ["SuM" 10] {"display_name" "My COOL AG"}]}}))
 
 ;; try an expression ag
 (expect
@@ -456,14 +462,19 @@
   {:query {:aggregation [[:count] [:sum [:field-id 10]] [:count [:field-id 20]] [:count]]}}
   (#'normalize/canonicalize {:query {:aggregation [:count [:sum 10] [:count 20] :count]}}))
 
-;; make sure we can deal with *named* aggregations!
+;; legacy `:named` aggregation clauses should get converted to `:aggregation-options`
 (expect
-  {:query {:aggregation [[:named [:sum [:field-id 10]] "Sum *TEN*"]]}}
-  (#'normalize/canonicalize {:query {:aggregation [:named [:sum 10] "Sum *TEN*"]}}))
+ {:query {:aggregation [[:aggregation-options [:sum [:field-id 10]] {:display-name "Sum *TEN*"}]]}}
+ (#'normalize/canonicalize {:query {:aggregation [:named [:sum 10] "Sum *TEN*"]}}))
 
 (expect
-  {:query {:aggregation [[:named [:sum [:field-id 10]] "Sum *TEN*" {:use-as-display-name? false}]]}}
-  (#'normalize/canonicalize {:query {:aggregation [:named [:sum 10] "Sum *TEN*" {:use-as-display-name? false}]}}))
+ {:query {:aggregation [[:aggregation-options [:sum [:field-id 10]] {:name "Sum *TEN*"}]]}}
+ (#'normalize/canonicalize {:query {:aggregation [:named [:sum 10] "Sum *TEN*" {:use-as-display-name? false}]}}))
+
+;; subclauses of `:aggregation-options` should get canonicalized correctly
+(expect
+ {:query {:aggregation [[:aggregation-options] [:sum [:field-id 10]]]}}
+ (#'normalize/canonicalize {:query {:aggregation [:aggregation-options [:sum 10] {}]}}))
 
 ;; make sure expression aggregations work correctly
 (expect
