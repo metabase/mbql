@@ -353,9 +353,20 @@
     [:rows & _]
     nil
 
-    ;; For named aggregations (`[:named <ag> <name>]`) we want to leave as-is and just canonicalize the ag it names
-    [:named wrapped-ag & more]
-    (into [:named (canonicalize-aggregation-subclause wrapped-ag)] more)
+    ;; for aggregations wrapped in aggregation-options we can leave it as-is and just canonicalize the subclause
+    [:aggregation-options wrapped-ag options]
+    [:aggregation-options (canonicalize-aggregation-subclause wrapped-ag) options]
+
+    ;; for legacy `:named` aggregations convert them to a new-style `:aggregation-options` clause.
+    ;;
+    ;; 99.99% of clauses should have no options, however if they do and `:use-as-display-name?` is false (default is
+    ;; true) then generate options to change `:name` rather than `:display-name`
+    [:named wrapped-ag ag-name & more]
+    (canonicalize-aggregation-subclause
+     [:aggregation-options wrapped-ag (let [[{:keys [use-as-display-name?]}] more]
+                                        (if (false? use-as-display-name?)
+                                          {:name ag-name}
+                                          {:display-name ag-name}))])
 
     [(ag-type :guard #{:+ :- :* :/}) & args]
     (apply
