@@ -448,6 +448,13 @@
   (and (datetime-field? field)
        (not (time-field? field))))
 
+(defn datetime-arithmetics?
+  "Is a given artihmetics clause operating on datetimes?"
+  [clause]
+  (boolean
+   (match-one clause
+              #{:datetime-field :interval :relative-datetime})))
+
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
@@ -477,35 +484,58 @@
   [names :- [s/Str]]
   (map (unique-name-generator) names))
 
-(def ^:private NamedAggregationsWithUniqueNames
-  (s/constrained [mbql.s/named] #(distinct? (map last %)) "sequence of named aggregations with unique names"))
+(def ^:private NamedAggregation
+  (s/constrained
+   mbql.s/aggregation-options
+   :name
+   "`:aggregation-options` with a `:name`"))
 
-(s/defn uniquify-named-aggregations :- NamedAggregationsWithUniqueNames
+(def ^:private UniquelyNamedAggregations
+  (s/constrained
+   [NamedAggregation]
+   (fn [clauses]
+     (distinct? (for [[_ _ {ag-name :name}] clauses]
+                  ag-name)))
+   "sequence of named aggregations with unique names"))
+
+(s/defn uniquify-named-aggregations :- UniquelyNamedAggregations
   "Make the names of a sequence of named aggregations unique by adding suffixes such as `_2`."
-  [named-aggregations :- [mbql.s/named]]
-  (map (fn [[_ ag] unique-name]
-         [:named ag unique-name])
-       named-aggregations
-       (uniquify-names (map last named-aggregations))))
+  [named-aggregations :- [NamedAggregation]]
+  (let [unique-names (uniquify-names
+                      (for [[_ wrapped-ag {ag-name :name}] named-aggregations]
+                        ag-name))]
+    (map
+     (fn [[_ wrapped-ag options] unique-name]
+       [:aggregation-options wrapped-ag (assoc options :name unique-name)])
+     named-aggregations
+     unique-names)))
 
-(s/defn pre-alias-aggregations :- [mbql.s/named]
-  "Wrap every aggregation clause in a `:named` clause, using the name returned by `(aggregation->name-fn ag-clause)`
-  as names for any clauses that are not already wrapped in `:name`.
+(s/defn pre-alias-aggregations :- [NamedAggregation]
+  "Wrap every aggregation clause in an `:aggregation-options` clause, using the name returned
+  by `(aggregation->name-fn ag-clause)` as names for any clauses that do not already have a `:name` in
+  `:aggregation-options`.
 
-    (pre-alias-aggregations annotate/aggregation-name [[:count] [:count] [:named [:sum] \"Sum-41\"]])
-    ;; -> [[:named [:count] \"count\"]
-           [:named [:count] \"count\"]
-           [:named [:sum [:field-id 1]] \"Sum-41\"]]
+    (pre-alias-aggregations annotate/aggregation-name
+     [[:count] [:count] [:aggregation-options [:sum [:field-id 1] {:name \"Sum-41\"}]])
+    ;; -> [[:aggregation-options [:count] {:name \"count\"}]
+           [:aggregation-options [:count] {:name \"count\"}]
+           [:aggregation-options [:sum [:field-id 1]] {:name \"Sum-41\"}]]
 
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
   {:style/indent 1}
   [aggregation->name-fn :- (s/pred fn?), aggregations :- [mbql.s/Aggregation]]
   (replace aggregations
-    [:named ag ag-name]       [:named ag ag-name]
-    [(_ :guard keyword?) & _] [:named &match (aggregation->name-fn &match)]))
+    [:aggregation-options _ (_ :guard :name)]
+    &match
 
-(s/defn pre-alias-and-uniquify-aggregations :- NamedAggregationsWithUniqueNames
+    [:aggregation-options wrapped-ag options]
+    [:aggregation-options wrapped-ag (assoc options :name (aggregation->name-fn wrapped-ag))]
+
+    [(_ :guard keyword?) & _]
+    [:aggregation-options &match {:name (aggregation->name-fn &match)}]))
+
+(s/defn pre-alias-and-uniquify-aggregations :- UniquelyNamedAggregations
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
   {:style/indent 1}
