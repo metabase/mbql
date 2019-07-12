@@ -283,9 +283,11 @@
     ExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} +
-  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArg))
+  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
 
-(defclause ^{:requires-features #{:expressions}} -, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
+(defclause ^{:requires-features #{:expressions}} -
+  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
+
 (defclause ^{:requires-features #{:expressions}} /, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
 (defclause ^{:requires-features #{:expressions}} *, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
 

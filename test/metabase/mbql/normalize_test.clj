@@ -136,6 +136,10 @@
   {:query {:expressions {:prev_month [:+ [:field-id 13] [:interval -1 :month]]}}}
   (#'normalize/normalize-tokens {:query {:expressions {:prev_month ["+" ["field-id" 13] ["interval" -1 "month"]]}}}))
 
+(expect
+  {:query {:expressions {:prev_month [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}
+  (#'normalize/normalize-tokens {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}))
+
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
