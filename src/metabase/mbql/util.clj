@@ -389,6 +389,8 @@
   "Return the `Expression` referenced by a given `expression-name`."
   [query :- mbql.s/Query, expression-name :- su/NonBlankString]
   (or (get-in query, [:query :expressions (keyword expression-name)])
+      (when-let [source-query (get-in query [:query :source-query])]
+        (expression-with-name (assoc query :query source-query)  expression-name))
       (throw (Exception. (str (tru "No expression named ''{0}''" (name expression-name)))))))
 
 
