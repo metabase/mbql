@@ -696,11 +696,11 @@
 (expect
  [[:aggregation-options [:sum [:field-id 1]] {:name "sum"}]
   [:aggregation-options [:sum [:field-id 1]] {:name "sum_2"}]
-  [:aggregation-options [:sum [:field-id 1]] {:name "sum_2_2", :display_name "Sum of Field 1"}]]
+  [:aggregation-options [:sum [:field-id 1]] {:name "sum_2_2", :display-name "Sum of Field 1"}]]
  (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
    [[:sum [:field-id 1]]
     [:sum [:field-id 1]]
-    [:aggregation-options [:sum [:field-id 1]] {:name "sum_2", :display_name "Sum of Field 1"}]]))
+    [:aggregation-options [:sum [:field-id 1]] {:name "sum_2", :display-name "Sum of Field 1"}]]))
 
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
@@ -806,9 +806,11 @@
   [:joined-field "a" [:field-id 10]]
   (mbql.u/->joined-field "a" [:field-id 10]))
 
+(derive :type/Integer :type/*)
+
 (expect
-  [:joined-field "a" [:field-literal "ABC" :type/Integer]]
-  (mbql.u/->joined-field "a" [:field-literal "ABC" :type/Integer]))
+ [:joined-field "a" [:field-literal "ABC" :type/Integer]]
+ (mbql.u/->joined-field "a" [:field-literal "ABC" :type/Integer]))
 
 (expect
   [:datetime-field [:joined-field "a" [:field-id 1]] :month]

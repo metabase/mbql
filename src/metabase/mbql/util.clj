@@ -485,15 +485,15 @@
 (def ^:private NamedAggregation
   (s/constrained
    mbql.s/aggregation-options
-   :name
+   #(:name (nth % 2))
    "`:aggregation-options` with a `:name`"))
 
 (def ^:private UniquelyNamedAggregations
   (s/constrained
    [NamedAggregation]
    (fn [clauses]
-     (distinct? (for [[_ _ {ag-name :name}] clauses]
-                  ag-name)))
+     (apply distinct? (for [[_ _ {ag-name :name}] clauses]
+                        ag-name)))
    "sequence of named aggregations with unique names"))
 
 (s/defn uniquify-named-aggregations :- UniquelyNamedAggregations

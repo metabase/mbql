@@ -636,8 +636,8 @@
   implicit joins; for explicit joins, you *must* specify `:alias` yourself; you can then reference Fields by using a
   `:joined-field` clause, e.g.
 
-    [:joined-field \"my_join_alias\" [:field-id 1]]                 ; for joins against other Tabless
-    [:joined-field \"my_join_alias\" [:field-literal \"my_field\"]] ; for joins against nested queries"
+    [:joined-field \"my_join_alias\" [:field-id 1]]                                ; for joins against other Tabless
+    [:joined-field \"my_join_alias\" [:field-literal \"my_field\" :field/Integer]] ; for joins against nested queries"
   (->
    {;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
     ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
