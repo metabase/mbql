@@ -1,4 +1,4 @@
-(defproject metabase/mbql "1.3.0"
+(defproject metabase/mbql "1.3.1"
   :description "Shared things used across several Metabase projects, such as i18n and config."
   :url "https://github.com/metabase/mbql"
   :min-lein-version "2.5.0"
@@ -31,7 +31,9 @@
 
     :injections
     [(require 'expectations)
-     ((resolve 'expectations/disable-run-on-shutdown))]
+     (#'expectations/disable-run-on-shutdown)
+     (require 'schema.core)
+     (schema.core/set-fn-validation! true)]
 
     :jvm-opts
     ["-Xverify:none"]}
