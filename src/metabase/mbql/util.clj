@@ -387,11 +387,23 @@
 
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
-  [query :- mbql.s/Query, expression-name :- su/NonBlankString]
-  (or (get-in query, [:query :expressions (keyword expression-name)])
-      (when-let [source-query (get-in query [:query :source-query])]
-        (expression-with-name (assoc query :query source-query)  expression-name))
-      (throw (Exception. (str (tru "No expression named ''{0}''" (name expression-name)))))))
+  [{inner-query :query} :- mbql.s/Query, expression-name :- (s/cond-pre s/Keyword su/NonBlankString)]
+  (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
+    (loop [{:keys [expressions source-query]} inner-query, found #{}]
+      (or
+       ;; look for either string or keyword version of `expression-name` in `expressions`
+       (some (partial get expressions) allowed-names)
+       ;; otherwise, if we have a source query recursively look in that (do we allow that??)
+       (let [found (into found (keys expressions))]
+         (if source-query
+           (recur source-query found)
+           ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
+           ;; were
+           (throw (ex-info (str (tru "No expression named ''{0}''" (qualified-name expression-name)))
+                           {:type            :invalid-query
+                            :expression-name expression-name
+                            :tried           allowed-names
+                            :found           found}))))))))
 
 
 (s/defn aggregation-at-index :- mbql.s/Aggregation
