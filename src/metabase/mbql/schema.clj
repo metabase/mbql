@@ -706,7 +706,9 @@
     ;; Metadata about the source query being used, if pulled in from a Card via the `:source-table "card__id"` syntax.
     ;; added automatically by the `resolve-card-id-source-tables` middleware.
     (s/optional-key :source-metadata)
-    (s/maybe [SourceQueryMetadata])}
+    (s/maybe [SourceQueryMetadata])
+
+    s/Keyword s/Any}
    (s/constrained
     (every-pred
      (some-fn :source-table :source-query)
