@@ -84,6 +84,7 @@ jobs:
     executor: default
     steps:
       - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Deploy to clojars
           command: lein deploy clojars
