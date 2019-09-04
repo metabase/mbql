@@ -122,16 +122,16 @@
   ;;   [:relative-datetime :current {:padded? false}]
   ;;   [:relative-datetime -10 :day]
   ;;   [:relative-datetime -10 :day {:padded? false}] ; amount & unit"
-  [[_ amount unitOrOptions options]]
+  [[_ amount unit-or-options options]]
   (cond
-    (and unitOrOptions options)
-    [:relative-datetime amount (mbql.u/normalize-token unitOrOptions) options]
+    (and unit-or-options options)
+    [:relative-datetime amount (mbql.u/normalize-token unit-or-options) options]
 
-    (and unitOrOptions (map? unitOrOptions)) ;; options
-    [:relative-datetime :current unitOrOptions]
+    (map? unit-or-options) ;; options
+    [:relative-datetime :current unit-or-options]
 
-    unitOrOptions ;; unit
-    [:relative-datetime amount (mbql.u/normalize-token unitOrOptions)]
+    unit-or-options ;; unit
+    [:relative-datetime amount (mbql.u/normalize-token unit-or-options)]
 
     :else
     [:relative-datetime :current]))
