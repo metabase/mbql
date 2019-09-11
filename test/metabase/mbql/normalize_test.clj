@@ -1,5 +1,6 @@
 (ns metabase.mbql.normalize-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.mbql.normalize :as normalize]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -385,6 +386,14 @@
   {:context nil}
   (#'normalize/normalize-tokens {:context nil}))
 
+(deftest params-normalization-test
+  (is (= {:native {:query  "SELECT * FROM venues WHERE name = ?"
+                   :params ["Red Medicine"]}}
+         (#'normalize/normalize-tokens
+          {:native {:query  "SELECT * FROM venues WHERE name = ?"
+                    :params ["Red Medicine"]}}))
+      ":native :params shouldn't get normalized."))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |
@@ -392,8 +401,8 @@
 
 ;; Does our `wrap-implict-field-id` fn work?
 (expect
-  [:field-id 10]
-  (#'normalize/wrap-implicit-field-id 10))
+ [:field-id 10]
+ (#'normalize/wrap-implicit-field-id 10))
 
 (expect
   [:field-id 10]
@@ -410,8 +419,8 @@
 ;; Do aggregations get canonicalized properly?
 ;; field ID should get wrapped in field-id and ags should be converted to multiple ag syntax
 (expect
-  {:query {:aggregation [[:count [:field-id 10]]]}}
-  (#'normalize/canonicalize {:query {:aggregation [:count 10]}}))
+ {:query {:aggregation [[:count [:field-id 10]]]}}
+ (#'normalize/canonicalize {:query {:aggregation [:count 10]}}))
 
 ;; ag with no Field ID
 (expect
