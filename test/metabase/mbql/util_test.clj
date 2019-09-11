@@ -1,5 +1,6 @@
 (ns metabase.mbql.util-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.mbql.util :as mbql.u]))
 
 ;; make sure `relative-date` works as expected
@@ -801,29 +802,24 @@
     :query       {:source-table 1}}))
 
 
-;; make sure `->joined-field` works the way it is supposed to
-(expect
-  [:joined-field "a" [:field-id 10]]
-  (mbql.u/->joined-field "a" [:field-id 10]))
-
 (derive :type/Integer :type/*)
 
-(expect
- [:joined-field "a" [:field-literal "ABC" :type/Integer]]
- (mbql.u/->joined-field "a" [:field-literal "ABC" :type/Integer]))
+(deftest joined-field-test
+  (is (= [:joined-field "a" [:field-id 10]]
+         (mbql.u/->joined-field "a" [:field-id 10])))
 
-(expect
-  [:datetime-field [:joined-field "a" [:field-id 1]] :month]
-  (mbql.u/->joined-field "a" [:datetime-field [:field-id 1] :month]))
+  (is (= [:joined-field "a" [:field-literal "ABC" :type/Integer]]
+         (mbql.u/->joined-field "a" [:field-literal "ABC" :type/Integer])))
 
-;; should throw an Exception if the Field already has an alias
-(expect
-  Exception
-  (mbql.u/->joined-field "a" [:joined-field "a" [:field-id 1]]))
+  (is (= [:datetime-field [:joined-field "a" [:field-id 1]] :month]
+         (mbql.u/->joined-field "a" [:datetime-field [:field-id 1] :month])))
 
-(expect
-  Exception
-  (mbql.u/->joined-field "a" [:datetime-field [:joined-field "a" [:field-id 1]] :month]))
+  (testing "We should throw an Exception if the Field already has an alias"
+    (is (thrown? Exception
+                 (mbql.u/->joined-field "a" [:joined-field "a" [:field-id 1]])))
+
+    (is (thrown? Exception
+                 (mbql.u/->joined-field "a" [:datetime-field [:joined-field "a" [:field-id 1]] :month])))))
 
 (expect
   (mbql.u/datetime-arithmetics? [:+ [:field-id 13] [:interval -1 :month]]))
