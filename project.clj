@@ -1,4 +1,4 @@
-(defproject metabase/mbql "1.3.5-SNAPSHOT"
+(defproject metabase/mbql "1.3.5"
   :description "Shared things used across several Metabase projects, such as i18n and config."
   :url "https://github.com/metabase/mbql"
   :min-lein-version "2.5.0"
@@ -7,7 +7,7 @@
             :url "https://raw.githubusercontent.com/metabase/mbql/master/LICENSE"}
 
   :aliases
-  {"test"                      ["with-profile" "+expectations" "expectations"]
+  {"test"                      ["with-profile" "+test" "test"]
    "bikeshed"                  ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "120"]
    "check-namespace-decls"     ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                  ["with-profile" "+eastwood" "eastwood"]
@@ -27,19 +27,19 @@
   {:dev
    {:dependencies
     [[org.clojure/clojure "1.10.1"]
-     [expectations "2.2.0-beta2"]]
+     [pjstadig/humane-test-output "0.9.0"]]
 
     :injections
-    [(require 'expectations)
-     (#'expectations/disable-run-on-shutdown)
-     (require 'schema.core)
-     (schema.core/set-fn-validation! true)]
+    [(require 'schema.core)
+     (schema.core/set-fn-validation! true)
+     (require 'pjstadig.humane-test-output)
+     (pjstadig.humane-test-output/activate!)]
 
     :jvm-opts
     ["-Xverify:none"]}
 
-   :expectations
-   {:plugins [[lein-expectations "0.0.8" :exclusions [expectations]]]}
+   :test
+   {}
 
    :eastwood
    {:plugins

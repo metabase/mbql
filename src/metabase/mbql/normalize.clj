@@ -231,7 +231,8 @@
   {:type            mbql.u/normalize-token
    ;; don't normalize native queries
    :native          {:query         identity
-                     :template-tags normalize-template-tags}
+                     :template-tags normalize-template-tags
+                     :params        identity}
    :query           {:aggregation     normalize-ag-clause-tokens
                      :expressions     normalize-expressions-tokens
                      :order-by        normalize-order-by-tokens
