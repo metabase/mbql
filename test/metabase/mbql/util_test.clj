@@ -383,104 +383,110 @@
 ;;; |                                                   Other Fns                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; can `simplify-compound-filter` fix `and` or `or` with only one arg?
-(expect
-  [:= [:field-id 1] 2]
-  (mbql.u/simplify-compound-filter [:and [:= [:field-id 1] 2]]))
+(deftest simplify-compound-filter-test
+  (is (= [:= [:field-id 1] 2]
+         (mbql.u/simplify-compound-filter [:and [:= [:field-id 1] 2]]))
+      "can `simplify-compound-filter` fix `and` or `or` with only one arg?")
+  (is (= [:and
+          [:= [:field-id 1] 2]
+          [:= [:field-id 3] 4]
+          [:= [:field-id 5] 6]]
+         (mbql.u/simplify-compound-filter [:and
+                                           [:= [:field-id 1] 2]
+                                           [:and
+                                            [:= [:field-id 3] 4]
+                                            [:and
+                                             [:= [:field-id 5] 6]]]]))
+      "can `simplify-compound-filter` unnest nested `and`s or `or`s?")
+  (is (= [:and [:= [:field-id 1] 2] [:= [:field-id 3] 4]]
+         (mbql.u/simplify-compound-filter [:and [:= [:field-id 1] 2] [:= [:field-id 3] 4] [:= [:field-id 1] 2]]))
+      "can `simplify-compound-filter` remove duplicates?")
+  (is (= [:= [:field-id 1] 2]
+         (mbql.u/simplify-compound-filter [:not [:not [:= [:field-id 1] 2]]]))
+      "can `simplify-compound-filter` eliminate `not` inside a `not`?")
+  (testing "removing empty/nil filter clauses"
+    (is (= nil
+           (mbql.u/simplify-compound-filter nil))
+        "does `simplify-compound-filter` return `nil` for empty filter clauses?")
 
-;; can `simplify-compound-filter` unnest nested `and`s or `or`s?
-(expect
-  [:and
-   [:= [:field-id 1] 2]
-   [:= [:field-id 3] 4]
-   [:= [:field-id 5] 6]]
-  (mbql.u/simplify-compound-filter [:and
-                                    [:= [:field-id 1] 2]
+    (is (= nil
+           (mbql.u/simplify-compound-filter [])))
+
+    (is (= nil
+           (mbql.u/simplify-compound-filter [nil nil nil])))
+
+    (is (= nil
+           (mbql.u/simplify-compound-filter [:and nil nil])))
+
+    (is (= nil
+           (mbql.u/simplify-compound-filter [:and nil [:and nil nil nil] nil])))
+    (is (= [:= [:field-id 1] 2]
+           (mbql.u/simplify-compound-filter [:and nil [:and nil [:= [:field-id 1] 2] nil] nil])))
+    (is (= [:and
+            [:= [:field-id 1] 2]
+            [:= [:field-id 3] 4]
+            [:= [:field-id 5] 6]
+            [:= [:field-id 7] 8]
+            [:= [:field-id 9] 10]]
+           (mbql.u/simplify-compound-filter
+            [:and
+             nil
+             [:= [:field-id 1] 2]
+             [:and
+              [:= [:field-id 3] 4]]
+             nil
+             [:and
+              [:and
+               [:and
+                [:= [:field-id 5] 6]
+                nil
+                nil]
+               [:= [:field-id 7] 8]
+               [:= [:field-id 9] 10]]]]))))
+  (is (= {:aggregation [[:share [:and
+                                 [:= [:field-id 1] 2]
+                                 [:= [:field-id 3] 4]
+                                 [:= [:field-id 5] 6]
+                                 [:= [:field-id 7] 8]
+                                 [:= [:field-id 9] 10]]]]}
+         (mbql.u/simplify-compound-filter
+          {:aggregation [[:share [:and
+                                  nil
+                                  [:= [:field-id 1] 2]
+                                  [:and
+                                   [:= [:field-id 3] 4]]
+                                  nil
+                                  [:and
+                                   [:and
                                     [:and
-                                     [:= [:field-id 3] 4]
-                                     [:and
-                                      [:= [:field-id 5] 6]]]]))
+                                     [:= [:field-id 5] 6]
+                                     nil
+                                     nil]
+                                    [:= [:field-id 7] 8]
+                                    [:= [:field-id 9] 10]]]]]]}))
+      "`simplify-compound-filter` should also work with more complex structures")
+  (testing "Check that `simplify-compound-filter` can apply de Morgan's law on `:not`"
+    (testing ":and clauses"
+      (is (= [:or
+              [:not [:= [:field-id 1] 2]]
+              [:not [:= [:field-id 2] 3]]]
+             (mbql.u/simplify-compound-filter [:not [:and
+                                                     [:= [:field-id 1] 2]
+                                                     [:= [:field-id 2] 3]]]))))
+    (testing ":or clauses"
+      (is (= [:and
+              [:not [:= [:field-id 1] 2]]
+              [:not [:= [:field-id 2] 3]]]
+             (mbql.u/simplify-compound-filter [:not [:or
+                                                     [:= [:field-id 1] 2]
+                                                     [:= [:field-id 2] 3]]]))
+          "Check that `simplify-compound-filter` can apply de Morgan's law on `:not` over `:or`")))
+  (testing "check that `simplify-compound-filter` doesn't remove `nil` from filters where it's being used as the value"
+    (is (= [:= [:field-id 1] nil]
+           (mbql.u/simplify-compound-filter [:= [:field-id 1] nil])))
+    (is (= [:= [:field-id 1] nil]
+           (mbql.u/simplify-compound-filter [:and nil [:= [:field-id 1] nil]])))))
 
-;; can `simplify-compound-filter` remove duplicates?
-(expect
-  [:and [:= [:field-id 1] 2] [:= [:field-id 3] 4]]
-  (mbql.u/simplify-compound-filter [:and [:= [:field-id 1] 2] [:= [:field-id 3] 4] [:= [:field-id 1] 2]]))
-
-;; can `simplify-compound-filter` eliminate `not` inside a `not`?
-(expect
-  [:= [:field-id 1] 2]
-  (mbql.u/simplify-compound-filter [:not [:not [:= [:field-id 1] 2]]]))
-
-;; does `simplify-compound-filter` return `nil` for empty filter clauses?
-(expect
-  nil
-  (mbql.u/simplify-compound-filter nil))
-
-(expect
-  nil
-  (mbql.u/simplify-compound-filter []))
-
-(expect
-  nil
-  (mbql.u/simplify-compound-filter [nil nil nil]))
-
-(expect
-  nil
-  (mbql.u/simplify-compound-filter [:and nil nil]))
-
-(expect
-  nil
-  (mbql.u/simplify-compound-filter [:and nil [:and nil nil nil] nil]))
-
-;; can `simplify-compound-filter` eliminate `nil` inside compound filters?
-(expect
-  [:= [:field-id 1] 2]
-  (mbql.u/simplify-compound-filter [:and nil [:and nil [:= [:field-id 1] 2] nil] nil]))
-
-(expect
-  [:and
-   [:= [:field-id 1] 2]
-   [:= [:field-id 3] 4]
-   [:= [:field-id 5] 6]
-   [:= [:field-id 7] 8]
-   [:= [:field-id 9] 10]]
-  (mbql.u/simplify-compound-filter [:and
-                                    nil
-                                    [:= [:field-id 1] 2]
-                                    [:and
-                                     [:= [:field-id 3] 4]]
-                                    nil
-                                    [:and
-                                     [:and
-                                      [:and
-                                       [:= [:field-id 5] 6]
-                                       nil
-                                       nil]
-                                      [:= [:field-id 7] 8]
-                                      [:= [:field-id 9] 10]]]]))
-
-;; `simplify-compound-filter` should also work with more complex structures
-(expect
-  {:aggregation [[:share [:and
-                          [:= [:field-id 1] 2]
-                          [:= [:field-id 3] 4]
-                          [:= [:field-id 5] 6]
-                          [:= [:field-id 7] 8]
-                          [:= [:field-id 9] 10]]]]}
-  (mbql.u/simplify-compound-filter {:aggregation [[:share [:and
-                                                           nil
-                                                           [:= [:field-id 1] 2]
-                                                           [:and
-                                                            [:= [:field-id 3] 4]]
-                                                           nil
-                                                           [:and
-                                                            [:and
-                                                             [:and
-                                                              [:= [:field-id 5] 6]
-                                                              nil
-                                                              nil]
-                                                             [:= [:field-id 7] 8]
-                                                             [:= [:field-id 9] 10]]]]]]}))
 
 ;; can we add an order-by clause to a query?
 (expect
@@ -512,39 +518,247 @@
                               [:desc [:field-id 10]]))
 
 (expect
-  {:source-table 1
-   :order-by     [[:asc [:field-id 10]]]}
-  (mbql.u/add-order-by-clause {:source-table 1
-                               :order-by     [[:asc [:field-id 10]]]}
-                              [:asc [:datetime-field [:field-id 10] :day]]))
+ {:source-table 1
+  :order-by     [[:asc [:field-id 10]]]}
+ (mbql.u/add-order-by-clause {:source-table 1
+                              :order-by     [[:asc [:field-id 10]]]}
+                             [:asc [:datetime-field [:field-id 10] :day]]))
 
-;; Check that `simplify-compound-filter` can apply de Morgan's law on `:not` over `:and`
-(expect
-  [:or
-   [:not [:= [:field-id 1] 2]]
-   [:not [:= [:field-id 2] 3]]]
-  (mbql.u/simplify-compound-filter [:not [:and
-                                          [:= [:field-id 1] 2]
-                                          [:= [:field-id 2] 3]]]))
+(deftest combine-filter-clauses-test
+  (is (= [:and [:= [:field-id 1] 100] [:= [:field-id 2] 200]]
+         (mbql.u/combine-filter-clauses
+          [:= [:field-id 1] 100]
+          [:= [:field-id 2] 200]))
+      "Should be able to combine non-compound clauses")
+  (is (= [:and
+          [:= [:field-id 1] 100]
+          [:= [:field-id 2] 200]
+          [:= [:field-id 3] 300]]
+         (mbql.u/combine-filter-clauses
+          [:= [:field-id 1] 100]
+          [:and
+           [:= [:field-id 2] 200]
+           [:= [:field-id 3] 300]]))
+      "Should be able to combine into an exisiting compound clause")
+  (is (= [:and
+          [:= [:field-id 1] 100]
+          [:= [:field-id 2] 200]
+          [:= [:field-id 3] 300]
+          [:= [:field-id 4] 300]]
+         (mbql.u/combine-filter-clauses
+          [:and
+           [:= [:field-id 1] 100]
+           [:= [:field-id 2] 200]]
+          [:and
+           [:= [:field-id 3] 300]
+           [:= [:field-id 4] 300]]))
+      "Should be able to combine multiple compound clauses"))
 
-;; Check that `simplify-compound-filter` can apply de Morgan's law on `:not` over `:or`
-(expect
-  [:and
-   [:not [:= [:field-id 1] 2]]
-   [:not [:= [:field-id 2] 3]]]
-  (mbql.u/simplify-compound-filter [:not [:or
-                                          [:= [:field-id 1] 2]
-                                          [:= [:field-id 2] 3]]]))
+(deftest add-filter-clause-test
+  (is (= {:database 1
+          :type     :query
+          :query    {:source-table 1
+                     :filter       [:and [:= [:field-id 1] 100] [:= [:field-id 2] 200]]}}
+         (mbql.u/add-filter-clause
+          {:database 1
+           :type     :query
+           :query    {:source-table 1
+                      :filter       [:= [:field-id 1] 100]}}
+          [:= [:field-id 2] 200]))
+      "Should be able to add a filter clause to a query"))
 
-;; check that `simplify-compound-filter` doesn't remove `nil` from filters where it's being used as the value
-(expect
-  [:= [:field-id 1] nil]
-  (mbql.u/simplify-compound-filter [:= [:field-id 1] nil]))
+(deftest desugar-time-interval-test
+  (is (= [:between
+          [:datetime-field [:field-id 1] :month]
+          [:relative-datetime 1 :month]
+          [:relative-datetime 2 :month]]
+         (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 2 :month]))
+      "`time-interval` with value > 1 or < -1 should generate a `between` clause")
+  (is (= [:between
+          [:datetime-field [:field-id 1] :month]
+          [:relative-datetime 0 :month]
+          [:relative-datetime 2 :month]]
+         (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 2 :month {:include-current true}]))
+      "test the `include-current` option -- interval should start or end at `0` instead of `1`")
+  (is (= [:=
+          [:datetime-field [:field-id 1] :month]
+          [:relative-datetime 1 :month]]
+         (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 1 :month]))
+      "`time-interval` with value = 1 should generate an `=` clause")
+  (is (= [:=
+          [:datetime-field [:field-id 1] :week]
+          [:relative-datetime -1 :week]]
+         (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] -1 :week]))
+      "`time-interval` with value = -1 should generate an `=` clause")
+  (testing "`include-current` option"
+    (is (= [:between
+            [:datetime-field [:field-id 1] :month]
+            [:relative-datetime 0 :month]
+            [:relative-datetime 1 :month]]
+           (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 1 :month {:include-current true}]))
+        "interval with value = 1 should generate a `between` clause")
+    (is (= [:between
+            [:datetime-field [:field-id 1] :day]
+            [:relative-datetime -1 :day]
+            [:relative-datetime 0 :day]]
+           (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] -1 :day {:include-current true}]))
+        "`include-current` option -- interval with value = 1 should generate a `between` clause"))
+  (is (= [:=
+          [:datetime-field [:field-id 1] :week]
+          [:relative-datetime 0 :week]]
+         (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] :current :week]))
+      "keywords like `:current` should work correctly"))
 
-(expect
-  [:= [:field-id 1] nil]
-  (mbql.u/simplify-compound-filter [:and nil [:= [:field-id 1] nil]]))
+(deftest desugar-relative-datetime-with-current-test
+  (is (= [:=
+          [:datetime-field [:field-id 1] :minute]
+          [:relative-datetime 0 :minute]]
+         (mbql.u/desugar-filter-clause
+          [:=
+           [:datetime-field [:field-id 1] :minute]
+           [:relative-datetime :current]]))
+      "when comparing `:relative-datetime`to `:datetime-field`, it should take the unit of the `:datetime-field`")
+  (is (= [:=
+          [:field-id 1]
+          [:relative-datetime 0 :default]]
+         (mbql.u/desugar-filter-clause
+          [:=
+           [:field-id 1]
+           [:relative-datetime :current]]))
+      "otherwise it should just get a unit of `:default`")
+  (is (= [:=
+          [:binning-strategy [:datetime-field [:field-id 1] :week] :default]
+          [:relative-datetime 0 :week]]
+         (mbql.u/desugar-filter-clause
+          [:=
+           [:binning-strategy [:datetime-field [:field-id 1] :week] :default]
+           [:relative-datetime :current]]))
+      "we should be able to handle datetime fields even if they are nested inside another clause"))
 
+(deftest desugar-other-filter-clauses-test
+  (testing "desugaring := and :!= with extra args"
+    (is (= [:or
+            [:= [:field-id 1] 2]
+            [:= [:field-id 1] 3]
+            [:= [:field-id 1] 4]
+            [:= [:field-id 1] 5]]
+           (mbql.u/desugar-filter-clause [:= [:field-id 1] 2 3 4 5]))
+        "= with extra args should get converted to or")
+    (is (= [:and
+            [:!= [:field-id 1] 2]
+            [:!= [:field-id 1] 3]
+            [:!= [:field-id 1] 4]
+            [:!= [:field-id 1] 5]]
+           (mbql.u/desugar-filter-clause [:!= [:field-id 1] 2 3 4 5]))
+        "!= with extra args should get converted to or"))
+  (testing "desugaring :inside"
+    (is (= [:and
+            [:between [:field-id 1] -10.0 10.0]
+            [:between [:field-id 2] -20.0 20.0]]
+           (mbql.u/desugar-filter-clause [:inside [:field-id 1] [:field-id 2] 10.0 -20.0 -10.0 20.0]))))
+  (testing "desugaring :is-null"
+    (is (= [:= [:field-id 1] nil]
+           (mbql.u/desugar-filter-clause [:is-null [:field-id 1]]))))
+  (testing "desugaring :not-null"
+    (is (= [:!= [:field-id 1] nil]
+           (mbql.u/desugar-filter-clause [:not-null [:field-id 1]])))))
+
+(deftest desugar-does-not-contain-test
+  (testing "desugaring does-not-contain without options"
+    (is (= [:not [:contains [:field-id 1] "ABC"]]
+           (mbql.u/desugar-filter-clause [:does-not-contain [:field-id 1] "ABC"]))))
+  (testing "desugaring does-not-contain *with* options"
+    (is (= [:not [:contains [:field-id 1] "ABC" {:case-sensitive false}]]
+           (mbql.u/desugar-filter-clause [:does-not-contain [:field-id 1] "ABC" {:case-sensitive false}])))))
+
+(deftest negate-simple-filter-clause-test
+  (testing :=
+    (is (= [:!= [:field-id 1] 10]
+           (mbql.u/negate-filter-clause [:= [:field-id 1] 10]))))
+  (testing :!=
+    (is (= [:= [:field-id 1] 10]
+           (mbql.u/negate-filter-clause [:!= [:field-id 1] 10]))))
+  (testing :>
+    (is (= [:<= [:field-id 1] 10]
+           (mbql.u/negate-filter-clause [:> [:field-id 1] 10]))))
+  (testing :<
+    (is (= [:>= [:field-id 1] 10]
+           (mbql.u/negate-filter-clause [:< [:field-id 1] 10]))))
+  (testing :>=
+    (is (= [:< [:field-id 1] 10]
+           (mbql.u/negate-filter-clause [:>= [:field-id 1] 10]))))
+  (testing :<=
+    (is (= [:> [:field-id 1] 10]
+           (mbql.u/negate-filter-clause [:<= [:field-id 1] 10]))))
+  (testing :between
+    (is (= [:or
+            [:< [:field-id 1] 10]
+            [:> [:field-id 1] 20]]
+           (mbql.u/negate-filter-clause [:between [:field-id 1] 10 20]))))
+  (testing :contains
+    (is (= [:not [:contains [:field-id 1] "ABC"]]
+           (mbql.u/negate-filter-clause [:contains [:field-id 1] "ABC"]))))
+  (testing :starts-with
+    (is (= [:not [:starts-with [:field-id 1] "ABC"]]
+           (mbql.u/negate-filter-clause [:starts-with [:field-id 1] "ABC"]))))
+  (testing :ends-with
+    (is (= [:not [:ends-with [:field-id 1] "ABC"]]
+           (mbql.u/negate-filter-clause [:ends-with [:field-id 1] "ABC"])))))
+
+(deftest negate-compund-filter-clause-test
+  (testing :not
+    (is (= [:= [:field-id 1] 10]
+           (mbql.u/negate-filter-clause [:not [:= [:field-id 1] 10]]))
+        "negating `:not` should simply unwrap the clause"))
+  (testing :and
+    (is (= [:or
+            [:!= [:field-id 1] 10]
+            [:!= [:field-id 2] 20]]
+           (mbql.u/negate-filter-clause
+            [:and
+             [:= [:field-id 1] 10]
+             [:= [:field-id 2] 20]]))))
+  (testing :or
+    (is (= [:and
+            [:= [:field-id 1] 10]
+            [:= [:field-id 2] 20]]
+           (mbql.u/negate-filter-clause
+            [:or
+             [:!= [:field-id 1] 10]
+             [:!= [:field-id 2] 20]])))))
+
+(deftest negate-syntactic-sugar-filter-clause-test
+  (testing "= with extra args"
+    (is (= [:and
+            [:!= [:field-id 1] 10]
+            [:!= [:field-id 1] 20]
+            [:!= [:field-id 1] 30]]
+           (mbql.u/negate-filter-clause [:= [:field-id 1] 10 20 30]))))
+  (testing "!= with extra args"
+    (is (= [:or
+            [:= [:field-id 1] 10]
+            [:= [:field-id 1] 20]
+            [:= [:field-id 1] 30]]
+           (mbql.u/negate-filter-clause [:!= [:field-id 1] 10 20 30]))))
+  (testing :time-interval
+    (is (= [:!=
+            [:datetime-field [:field-id 1] :week]
+            [:relative-datetime 0 :week]]
+           (mbql.u/negate-filter-clause [:time-interval [:field-id 1] :current :week]))))
+  (testing :is-null
+    (is (= [:!= [:field-id 1] nil]
+           (mbql.u/negate-filter-clause [:is-null [:field-id 1]]))))
+  (testing :not-null
+    (is (= [:= [:field-id 1] nil]
+           (mbql.u/negate-filter-clause [:not-null [:field-id 1]]))))
+  (testing :inside
+    (is (= [:or
+            [:< [:field-id 1] -10.0]
+            [:> [:field-id 1] 10.0]
+            [:< [:field-id 2] -20.0]
+            [:> [:field-id 2] 20.0]]
+           (mbql.u/negate-filter-clause
+            [:inside [:field-id 1] [:field-id 2] 10.0 -20.0 -10.0 20.0])))))
 
 ;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
 

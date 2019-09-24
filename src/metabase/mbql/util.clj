@@ -263,6 +263,125 @@
     outer-query
     (update-in outer-query [:query :filter] combine-filter-clauses new-clause)))
 
+(defn desugar-inside
+  "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
+  [m]
+  (replace m
+    [:inside lat-field lon-field lat-max lon-min lat-min lon-max]
+    [:and
+     [:between lat-field lat-min lat-max]
+     [:between lon-field lon-min lon-max]]))
+
+(defn desugar-is-null-and-not-null
+  "Rewrite `:is-null` and `:not-null` filter clauses as simpler `:=` and `:!=`, respectively."
+  [m]
+  (replace m
+    [:is-null field]  [:=  field nil]
+    [:not-null field] [:!= field nil]))
+
+(defn desugar-time-interval
+  "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
+  [m]
+  (replace m
+    [:time-interval field n unit] (recur [:time-interval field n unit nil])
+
+    ;; replace current/last/next with corresponding value of n and recur
+    [:time-interval field :current unit options] (recur [:time-interval field  0 unit options])
+    [:time-interval field :last    unit options] (recur [:time-interval field -1 unit options])
+    [:time-interval field :next    unit options] (recur [:time-interval field  1 unit options])
+
+    [:time-interval field (n :guard #{-1}) unit (_ :guard :include-current)]
+    [:between [:datetime-field field unit] [:relative-datetime n unit] [:relative-datetime 0 unit]]
+
+    [:time-interval field (n :guard #{1}) unit (_ :guard :include-current)]
+    [:between [:datetime-field field unit] [:relative-datetime 0 unit] [:relative-datetime n unit]]
+
+    [:time-interval field (n :guard #{-1 0 1}) unit _]
+    [:= [:datetime-field field unit] [:relative-datetime n unit]]
+
+    [:time-interval field (n :guard neg?) unit (_ :guard :include-current)]
+    [:between [:datetime-field field unit] [:relative-datetime n unit] [:relative-datetime 0 unit]]
+
+    [:time-interval field (n :guard neg?) unit _]
+    [:between [:datetime-field field unit] [:relative-datetime n unit] [:relative-datetime -1 unit]]
+
+    [:time-interval field n unit (_ :guard :include-current)]
+    [:between [:datetime-field field unit] [:relative-datetime 0 unit] [:relative-datetime n unit]]
+
+    [:time-interval field n unit _]
+    [:between [:datetime-field field unit] [:relative-datetime 1 unit] [:relative-datetime n unit]]))
+
+(defn desugar-does-not-contain
+  "Rewrite `:does-not-contain` filter clauses as simpler `:not` clauses."
+  [m]
+  (replace m
+    [:does-not-contain & args]
+    [:not (into [:contains] args)]))
+
+(defn desugar-equals-and-not-equals-with-extra-args
+  "`:=` and `!=` clauses with more than 2 args automatically get rewritten as compound filters.
+
+     [:= field x y]  -> [:or  [:=  field x] [:=  field y]]
+     [:!= field x y] -> [:and [:!= field x] [:!= field y]]"
+  [m]
+  (replace m
+    [:= field x y & more]
+    (apply vector :or (for [x (concat [x y] more)]
+                        [:= field x]))
+
+    [:!= field x y & more]
+    (apply vector :and (for [x (concat [x y] more)]
+                         [:!= field x]))))
+
+(defn desugar-current-relative-datetime
+  "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
+  `<unit>` is inferred from the `:datetime-field` the clause is being compared to (if any), otherwise falls back to
+  `default.`"
+  [m]
+  (replace m
+    [clause field [:relative-datetime :current & _]]
+    [clause field [:relative-datetime 0 (or (match-one field [:datetime-field _ unit] unit)
+                                            :default)]]))
+
+(s/defn desugar-filter-clause :- mbql.s/Filter
+  "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
+  equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
+  that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
+  implementation `negate-filter-clause` below.)"
+  [filter-clause :- mbql.s/Filter]
+  (-> filter-clause
+      desugar-current-relative-datetime
+      desugar-equals-and-not-equals-with-extra-args
+      desugar-does-not-contain
+      desugar-time-interval
+      desugar-is-null-and-not-null
+      desugar-inside
+      simplify-compound-filter))
+
+(defmulti ^:private negate* first)
+
+(defmethod negate* :not [[_ subclause]]    subclause)
+(defmethod negate* :and [[_ & subclauses]] (into [:or]  (map negate* subclauses)))
+(defmethod negate* :or  [[_ & subclauses]] (into [:and] (map negate* subclauses)))
+(defmethod negate* :=   [[_ field value]]  [:!= field value])
+(defmethod negate* :!=  [[_ field value]]  [:=  field value])
+(defmethod negate* :>   [[_ field value]]  [:<= field value])
+(defmethod negate* :<   [[_ field value]]  [:>= field value])
+(defmethod negate* :>=  [[_ field value]]  [:<  field value])
+(defmethod negate* :<=  [[_ field value]]  [:>  field value])
+
+(defmethod negate* :between [[_ field min max]] [:or [:< field min] [:> field max]])
+
+(defmethod negate* :contains    [clause] [:not clause])
+(defmethod negate* :starts-with [clause] [:not clause])
+(defmethod negate* :ends-with   [clause] [:not clause])
+
+(s/defn negate-filter-clause :- mbql.s/Filter
+  "Return the logical compliment of an MBQL filter clause, generally without using `:not` (except for the string
+  filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
+  top-level `:not` filter clauses."
+  [filter-clause :- mbql.s/Filter]
+  (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
 (s/defn query->source-table-id :- (s/maybe su/IntGreaterThanZero)
   "Return the source Table ID associated with `query`, if applicable; handles nested queries as well. If `query` is
