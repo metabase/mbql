@@ -100,7 +100,11 @@
 ;; becomes:
 ;; [:= [:datetime-field [:field-id 10] :day] [:absolute-datetime #inst "2018-10-02" :day]]
 (defclause ^:internal absolute-datetime
-  timestamp java.sql.Timestamp
+  timestamp (s/cond-pre java.time.Instant
+                        java.time.LocalDate
+                        java.time.LocalDateTime
+                        java.time.OffsetDateTime
+                        java.time.ZonedDateTime)
   unit      DatetimeFieldUnit)
 
 ;; it could make sense to say hour-of-day(field) =  hour-of-day("2018-10-10T12:00")
@@ -114,7 +118,7 @@
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
 ;; time-bucketing unit
 (defclause ^:internval time
-  time java.sql.Time
+  time (s/cond-pre java.time.LocalTime java.time.OffsetTime)
   unit TimeUnit)
 
 (def ^:private DatetimeLiteral

@@ -462,11 +462,13 @@
       (update inner-query :order-by (comp vec conj) order-by-clause))))
 
 
-;; TODO - we should just use `Instant` or `ZonedDateTime` for this
-(defn relative-date
+(defn ^:deprecated relative-date
   "Return a new Timestamp relative to the current time using a relative date `unit`.
 
-    (relative-date :year -1) -> #inst 2014-11-12 ..."
+    (relative-date :year -1) -> #inst 2014-11-12 ...
+
+  DEPRECATED -- this implementation uses `java.sql.Timestamp; the QP code is being rewritten to use `java.time`
+  instead. Expect this function to be removed in the near future."
   ^java.sql.Timestamp [unit amount, ^Timestamp timestamp]
   (let [cal               (doto (Calendar/getInstance)
                             (.setTimeZone (TimeZone/getTimeZone "UTC"))
@@ -484,8 +486,9 @@
                       (* amount multiplier)))
     (java.sql.Timestamp. (.getTime (.getTime cal)))))
 
-(s/defn add-datetime-units :- mbql.s/DateTimeValue
-  "Return a `relative-datetime` clause with `n` units added to it."
+(s/defn ^:deprecated add-datetime-units :- mbql.s/DateTimeValue
+  "Return a `relative-datetime` clause with `n` units added to it. (DEPRECATED — this uses `java.sql.Timestamp`
+  instead of `java.time`, and will be rewritten in the near future.) "
   [absolute-or-relative-datetime :- mbql.s/DateTimeValue
    n                             :- s/Num]
   (if (is-clause? :relative-datetime absolute-or-relative-datetime)
@@ -494,7 +497,6 @@
     (let [[_ timestamp unit] absolute-or-relative-datetime]
       [:absolute-datetime (relative-date unit n timestamp) unit])))
 
-
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
@@ -502,7 +504,6 @@
   (if (mbql-clause? x)
     (first x)
     (class x)))
-
 
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
@@ -523,7 +524,6 @@
                             :expression-name expression-name
                             :tried           allowed-names
                             :found           found}))))))))
-
 
 (s/defn aggregation-at-index :- mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
