@@ -1,42 +1,22 @@
 (ns metabase.mbql.util-test
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
+            [java-time :as t]
             [metabase.mbql.util :as mbql.u]))
 
-;; make sure `relative-date` works as expected
-(def ^:private a-timestamp (java.sql.Timestamp. (.getTime #inst "2019-06-14T00:00:00.000Z")))
-
-(expect
-  #inst "2019-06-14T00:00:05.000000000-00:00"
-  (mbql.u/relative-date :second 5 a-timestamp))
-
-(expect
-  #inst "2019-06-14T00:05:00.000000000-00:00"
-  (mbql.u/relative-date :minute 5 a-timestamp))
-
-(expect
-  #inst "2019-06-14T05:00:00.000000000-00:00"
-  (mbql.u/relative-date :hour 5 a-timestamp))
-
-(expect
-  #inst "2019-06-19T00:00:00.000000000-00:00"
-  (mbql.u/relative-date :day 5 a-timestamp))
-
-(expect
-  #inst "2019-07-19T00:00:00.000000000-00:00"
-  (mbql.u/relative-date :week 5 a-timestamp))
-
-(expect
-  #inst "2019-11-14T00:00:00.000000000-00:00"
-  (mbql.u/relative-date :month 5 a-timestamp))
-
-(expect
-  #inst "2020-09-14T00:00:00.000000000-00:00"
-  (mbql.u/relative-date :quarter 5 a-timestamp))
-
-(expect
-  #inst "2024-06-14T00:00:00.000000000-00:00"
-  (mbql.u/relative-date :year 5 a-timestamp))
+(deftest relative-date-test
+  (let [t (t/zoned-date-time "2019-06-14T00:00:00.000Z[UTC]")]
+    (doseq [[unit n expected] [[:second  5 "2019-06-14T00:00:05Z[UTC]"]
+                               [:minute  5 "2019-06-14T00:05:00Z[UTC]"]
+                               [:hour    5 "2019-06-14T05:00:00Z[UTC]"]
+                               [:day     5 "2019-06-19T00:00:00Z[UTC]"]
+                               [:week    5 "2019-07-19T00:00:00Z[UTC]"]
+                               [:month   5 "2019-11-14T00:00:00Z[UTC]"]
+                               [:quarter 5 "2020-09-14T00:00:00Z[UTC]"]
+                               [:year    5 "2024-06-14T00:00:00Z[UTC]"]]]
+      (is (= (t/zoned-date-time expected)
+             (mbql.u/relative-date unit n t))
+          (format "%s plus %d %ss should be %s" t n unit expected)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -45,12 +25,12 @@
 
 ;; can we use `match` to find the instances of a clause?
 (expect
-  [[:field-id 10]
-   [:field-id 20]]
-  (mbql.u/match {:query {:filter [:=
-                                  [:field-id 10]
-                                  [:field-id 20]]}}
-    [:field-id & _]))
+ [[:field-id 10]
+  [:field-id 20]]
+ (mbql.u/match {:query {:filter [:=
+                                 [:field-id 10]
+                                 [:field-id 20]]}}
+   [:field-id & _]))
 
 ;; is `match` nice enought to automatically wrap raw keywords in appropriate patterns for us?
 (expect

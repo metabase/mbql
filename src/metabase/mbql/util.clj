@@ -2,7 +2,9 @@
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
   (:require [clojure.string :as str]
-            [java-time :as t]
+            [java-time
+             [amount :as t.amount]
+             [core :as t.core]]
             [metabase.common.i18n :refer [tru]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util.match :as mbql.match]
@@ -469,16 +471,16 @@
   ^java.time.temporal.Temporal [unit amount t]
   (if (zero? amount)
     t
-    (t/plus t (case unit
-                :millisecond (t/millis amount)
-                :second      (t/seconds amount)
-                :minute      (t/minutes amount)
-                :hour        (t/hours amount)
-                :day         (t/days amount)
-                :week        (t/days (* amount 7))
-                :month       (t/months amount)
-                :quarter     (t/months (* amount 3))
-                :year        (t/years 1)))))
+    (t.core/plus t (case unit
+                     :millisecond (t.amount/millis amount)
+                     :second      (t.amount/seconds amount)
+                     :minute      (t.amount/minutes amount)
+                     :hour        (t.amount/hours amount)
+                     :day         (t.amount/days amount)
+                     :week        (t.amount/days (* amount 7))
+                     :month       (t.amount/months amount)
+                     :quarter     (t.amount/months (* amount 3))
+                     :year        (t.amount/years amount)))))
 
 (s/defn add-datetime-units :- mbql.s/DateTimeValue
   "Return a `relative-datetime` clause with `n` units added to it."
