@@ -2,13 +2,12 @@
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
   (:require [clojure.string :as str]
+            [java-time :as t]
             [metabase.common.i18n :refer [tru]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util.match :as mbql.match]
             [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import java.sql.Timestamp
-           [java.util Calendar TimeZone]))
+            [schema.core :as s]))
 
 (defn qualified-name
   "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
@@ -461,34 +460,28 @@
       ;; otherwise add new clause at the end
       (update inner-query :order-by (comp vec conj) order-by-clause))))
 
+(defn relative-date
+  "Return a new Temporal value relative to `t` using a relative date `unit`.
 
-(defn ^:deprecated relative-date
-  "Return a new Timestamp relative to the current time using a relative date `unit`.
+    (relative-date :year -1 (t/zoned-date-time \"2019-11-04T10:57:00-08:00[America/Los_Angeles]\"))
+    ;; ->
+    (t/zoned-date-time \"2020-11-04T10:57-08:00[America/Los_Angeles]\")"
+  ^java.time.temporal.Temporal [unit amount t]
+  (if (zero? amount)
+    t
+    (t/plus t (case unit
+                :millisecond (t/millis amount)
+                :second      (t/seconds amount)
+                :minute      (t/minutes amount)
+                :hour        (t/hours amount)
+                :day         (t/days amount)
+                :week        (t/days (* amount 7))
+                :month       (t/months amount)
+                :quarter     (t/months (* amount 3))
+                :year        (t/years 1)))))
 
-    (relative-date :year -1) -> #inst 2014-11-12 ...
-
-  DEPRECATED -- this implementation uses `java.sql.Timestamp; the QP code is being rewritten to use `java.time`
-  instead. Expect this function to be removed in the near future."
-  ^java.sql.Timestamp [unit amount, ^Timestamp timestamp]
-  (let [cal               (doto (Calendar/getInstance)
-                            (.setTimeZone (TimeZone/getTimeZone "UTC"))
-                            (.setTime timestamp))
-        [unit multiplier] (case unit
-                            :second  [Calendar/SECOND 1]
-                            :minute  [Calendar/MINUTE 1]
-                            :hour    [Calendar/HOUR   1]
-                            :day     [Calendar/DATE   1]
-                            :week    [Calendar/DATE   7]
-                            :month   [Calendar/MONTH  1]
-                            :quarter [Calendar/MONTH  3]
-                            :year    [Calendar/YEAR   1])]
-    (.set cal unit (+ (.get cal unit)
-                      (* amount multiplier)))
-    (java.sql.Timestamp. (.getTime (.getTime cal)))))
-
-(s/defn ^:deprecated add-datetime-units :- mbql.s/DateTimeValue
-  "Return a `relative-datetime` clause with `n` units added to it. (DEPRECATED — this uses `java.sql.Timestamp`
-  instead of `java.time`, and will be rewritten in the near future.) "
+(s/defn add-datetime-units :- mbql.s/DateTimeValue
+  "Return a `relative-datetime` clause with `n` units added to it."
   [absolute-or-relative-datetime :- mbql.s/DateTimeValue
    n                             :- s/Num]
   (if (is-clause? :relative-datetime absolute-or-relative-datetime)

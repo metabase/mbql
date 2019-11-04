@@ -18,6 +18,7 @@
 
   :dependencies
   [[org.clojure/core.match "0.3.0"]
+   [clojure.java-time "0.3.2"]
    [medley "1.2.0"]
    [metabase/common "1.0.4"]
    [metabase/schema-util "1.0.2"]
