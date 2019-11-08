@@ -100,8 +100,7 @@
 ;; becomes:
 ;; [:= [:datetime-field [:field-id 10] :day] [:absolute-datetime #inst "2018-10-02" :day]]
 (defclause ^:internal absolute-datetime
-  timestamp (s/cond-pre java.time.Instant
-                        java.time.LocalDate
+  timestamp (s/cond-pre java.time.LocalDate
                         java.time.LocalDateTime
                         java.time.OffsetDateTime
                         java.time.ZonedDateTime)
@@ -117,7 +116,9 @@
 ;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
 ;; time-bucketing unit
-(defclause ^:internval time
+;;
+;; TODO - should we have a separate `date` type as well
+(defclause ^:internal time
   time (s/cond-pre java.time.LocalTime java.time.OffsetTime)
   unit TimeUnit)
 
@@ -136,7 +137,13 @@
     ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
     ;; `absolute-datetime` clauses.
     TemporalLiteralString
-    java.util.Date)))
+
+    java.time.LocalTime
+    java.time.LocalDate
+    java.time.LocalDateTime
+    java.time.OffsetTime
+    java.time.OffsetDateTime
+    java.time.ZonedDateTime)))
 
 (def DateTimeValue
   "Schema for a datetime value drivers will personally have to handle, either an `absolute-datetime` form or a
