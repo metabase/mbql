@@ -1,5 +1,7 @@
 (ns metabase.mbql.normalize-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure
+             [set :as set]
+             [test :refer :all]]
             [expectations :refer [expect]]
             [metabase.mbql.normalize :as normalize]))
 
@@ -340,21 +342,30 @@
     :query    {"source_table" 1
                "joins"        [{"fields" [["field_id" 1] ["field_literal" :MY_FIELD "type/Integer"]]}]}}))
 
-;; does `:source-query` in `:joins` get normalized?
-(expect
-  {:database 4
-   :type     :query
-   :query    {:source-table 1
-              :joins        [{:source-query {:source-table 2}
-                              :fields       [[:field-id 1]
-                                             [:field-literal "MY_FIELD" :type/Integer]]}]}}
-  (#'normalize/normalize-tokens
-   {:database 4
-    :type     :query
-    :query    {:source-table 1
-               :joins        [{"source_query" {"source_table" 2}
-                               "fields"       [["field_id" 1]
-                                               ["field_literal" :MY_FIELD "type/Integer"]]}]}}))
+(deftest normalize-source-query-in-joins-test
+  (testing "does a `:source-query` in `:joins` get normalized?"
+    (letfn [(query-with-joins [joins]
+              {:database 4
+               :type     :query
+               :query    {:source-table 1
+                          :joins        joins}})]
+      (testing "MBQL source query in :joins"
+        (is (= (query-with-joins [{:source-query {:source-table 2}
+                                   :fields       [[:field-id 1]
+                                                  [:field-literal "MY_FIELD" :type/Integer]]}])
+               (#'normalize/normalize-tokens
+                (query-with-joins [{"source_query" {"source_table" 2}
+                                    "fields"       [["field_id" 1]
+                                                    ["field_literal" :MY_FIELD "type/Integer"]]}])))))
+      (testing "native source query in :joins"
+        (testing "string source query"
+          (is (= (query-with-joins [{:source-query {:native "SELECT *"}}])
+                 (#'normalize/normalize-tokens
+                  (query-with-joins [{"source_query" {"NATIVE" "SELECT *"}}])))))
+        (testing "map source query"
+          (is (= (query-with-joins [{:source-query {:native {"this_is_a_native_query" "TRUE"}}}])
+                 (#'normalize/normalize-tokens
+                  (query-with-joins [{"source_query" {"NATIVE" {"this_is_a_native_query" "TRUE"}}}])))))))))
 
 ;; do `:joins` inside a nested query get normalized?
 (expect
@@ -1040,3 +1051,26 @@
                                                              "percent-url"    0.0
                                                              "percent-email"  0.0
                                                              "average-length" 15.63}}}}]}))
+
+(deftest normalize-nil-values-in-native-maps-test
+  (testing "nil values in native query maps (e.g. MongoDB queries) should not get removed during normalization"
+    (testing "keys in native query maps should not get normalized"
+      (let [native-query        {:projections [:count]
+                                 :query       [{"$project" {"price" "$price"}}
+                                               {"$match" {"price" {"$eq" 1}}}
+                                               {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                               {"$sort" {"_id" 1}}
+                                               {"$project" {"_id" false, "count" true}}]
+                                 :collection  "venues"}
+            native-source-query (set/rename-keys native-query {:query :native})]
+        (doseq [[message query] {"top-level native query"
+                                 {:native native-query}
+
+                                 "native source query"
+                                 {:query {:source-query native-source-query}}
+
+                                 "native source query in join"
+                                 {:query {:joins [{:source-query native-source-query}]}}}]
+          (is (= query
+                 (normalize/normalize query))
+              message))))))

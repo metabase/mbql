@@ -28,8 +28,10 @@
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
-  (:require [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
+  (:require [clojure
+             [set :as set]
+             [walk :as walk]]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.common.i18n :refer [tru]]
             [metabase.mbql
@@ -201,8 +203,14 @@
     type   (update :type mbql.u/normalize-token)
     target (update :target #(normalize-tokens % :ignore-path))))
 
-(defn- normalize-source-query [{native? :native, :as source-query}]
-  (normalize-tokens source-query [(if native? :native :query)]))
+(defn- normalize-source-query [source-query]
+  (let [{native? :native, :as source-query} (m/map-keys mbql.u/normalize-token source-query)]
+    (if native?
+      (-> source-query
+          (set/rename-keys {:native :query})
+          (normalize-tokens [:native])
+          (set/rename-keys {:query :native}))
+      (normalize-tokens source-query [:query]))))
 
 (defn- normalize-join [join]
   ;; path in call to `normalize-tokens` is [:query] so it will normalize `:source-query` as appropriate
@@ -575,52 +583,57 @@
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- non-empty-value?
-  "Is this 'value' in a query map considered non-empty (e.g., should we refrain from removing that key entirely?) e.g.:
+(declare remove-empty-clauses)
 
-    {:aggregation nil} ; -> remove this, value is nil
-    {:filter []}       ; -> remove this, also empty
-    {:limit 100}       ; -> keep this"
-  [x]
-  (cond
-    ;; record types could be something like `driver` and should always be considered non-empty
-    (record? x)
-    true
+(defn- remove-empty-clauses-in-map [m path]
+  (let [m (into (empty m) (for [[k v] m
+                                :let  [v (remove-empty-clauses v (conj path k))]
+                                :when (some? v)]
+                            [k v]))]
+    (when (seq m)
+      m)))
 
-    (map? x)
-    (seq x)
+(defn- remove-empty-clauses-in-sequence [xs path]
+  (let [xs (mapv #(remove-empty-clauses % (conj path ::sequence))
+                 xs)]
+    (when (some some? xs)
+      xs)))
 
-    ;; a sequence is considered non-empty if it has some non-nil values
-    (sequential? x)
-    (and (seq x)
-         (some some? x))
+(defn- remove-empty-clauses-in-join [join]
+  (remove-empty-clauses join [:query]))
 
-    ;; any other value is considered non-empty if it is not nil
-    :else
-    (some? x)))
+(defn- remove-empty-clauses-in-source-query [{native? :native, :as source-query}]
+  (if native?
+    (-> source-query
+        (set/rename-keys {:native :query})
+        (remove-empty-clauses [:native])
+        (set/rename-keys {:query :native}))
+    (remove-empty-clauses source-query [:query])))
+
+(def ^:private path->special-remove-empty-clauses-fn
+  {:native {:query identity}
+   :query  {:source-query remove-empty-clauses-in-source-query
+            :joins        {::sequence remove-empty-clauses-in-join}}})
 
 (defn- remove-empty-clauses
   "Remove any empty or `nil` clauses in a query."
-  [query]
-  (walk/postwalk
-   (fn [x]
+  ([query]
+   (remove-empty-clauses query []))
+
+  ([x path]
+   (let [special-fn (when (seq path)
+                      (get-in path->special-remove-empty-clauses-fn path))]
      (cond
-       (record? x)
-       x
-
-       (map? x)
-       (m/filter-vals non-empty-value? x)
-
-       :else
-       x))
-   query))
+       (fn? special-fn) (special-fn x)
+       (record? x)      x
+       (map? x)         (remove-empty-clauses-in-map x path)
+       (sequential? x)  (remove-empty-clauses-in-sequence x path)
+       :else            x))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - should have this validate against the MBQL schema afterwards, right? Maybe once we get closer to making this
-;; all mergable
 (def ^{:arglists '([outer-query])} normalize
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
