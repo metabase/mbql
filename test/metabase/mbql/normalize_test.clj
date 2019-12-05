@@ -1071,6 +1071,6 @@
 
                                  "native source query in join"
                                  {:query {:joins [{:source-query native-source-query}]}}}]
-          (is (= query
-                 (normalize/normalize query))
-              message))))))
+          (testing message
+            (is (= query
+                   (normalize/normalize query)))))))))
