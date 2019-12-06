@@ -549,16 +549,12 @@
   [[_ id]]
   (ga-id? id))
 
-(defn datetime-field?
+(defn temporal-field?
   "Is `field` used to record something date or time related, i.e. does `field` have a base type or special type that
-  derives from `:type/DateTime`?
-
-  For historical reasons `:type/Time` derivies from `:type/DateTime`, meaning this function will still return true for
-  Fields that record only time. You can use `datetime-but-not-time-field?` instead if you want to exclude time
-  Fields."
+  derives from `:type/Temporal`?"
   [field]
-  (or (isa? (:base_type field)    :type/DateTime)
-      (isa? (:special_type field) :type/DateTime)))
+  (or (isa? (:base_type field)    :type/Temporal)
+      (isa? (:special_type field) :type/Temporal)))
 
 (defn time-field?
   "Is `field` used to record a time of day (e.g. hour/minute/second), but not the date itself? i.e. does `field` have a
@@ -567,11 +563,11 @@
   (or (isa? (:base_type field)    :type/Time)
       (isa? (:special_type field) :type/Time)))
 
-(defn datetime-but-not-time-field?
-  "Is `field` used to record a specific moment in time, i.e. does `field` have a base type or special type that derives
-  from `:type/DateTime` but not `:type/Time`?"
+(defn temporal-but-not-time-field?
+  "Does `field` have a base type or special type that derives from `:type/Temporal`, but not `:type/Time`? (i.e., is
+  Field a Date or DateTime?)"
   [field]
-  (and (datetime-field? field)
+  (and (temporal-field? field)
        (not (time-field? field))))
 
 (defn datetime-arithmetics?
