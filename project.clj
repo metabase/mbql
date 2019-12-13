@@ -1,4 +1,4 @@
-(defproject metabase/mbql "1.4.2"
+(defproject metabase/mbql "1.4.3"
   :description "Shared things used across several Metabase projects, such as i18n and config."
   :url "https://github.com/metabase/mbql"
   :min-lein-version "2.5.0"
@@ -20,7 +20,7 @@
   [[org.clojure/core.match "0.3.0"]
    [clojure.java-time "0.3.2"]
    [medley "1.2.0"]
-   [metabase/common "1.0.4"]
+   [metabase/common "1.0.6"]
    [metabase/schema-util "1.0.2"]
    [prismatic/schema "1.1.11"]]
 
