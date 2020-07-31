@@ -4,4 +4,6 @@
 [![License](https://img.shields.io/badge/license-Eclipse%20Public%20License-blue.svg)](https://raw.githubusercontent.com/metabase/mbql/master/LICENSE)
 [![cljdoc badge](https://cljdoc.org/badge/metabase/mbql)](https://cljdoc.org/d/metabase/mbql/CURRENT)
 
+### NOTE: This codebase has been moved back into `metabase/metabase` monorepo in [this PR](https://github.com/metabase/metabase/pull/11845).
+
 [![Clojars Project](https://clojars.org/metabase/mbql/latest-version.svg)](http://clojars.org/metabase/mbql)
