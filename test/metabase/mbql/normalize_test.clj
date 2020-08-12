@@ -60,6 +60,14 @@
   {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}
   (#'normalize/normalize-tokens {:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}))
 
+(expect
+ {:filter [:between [:field-id 10] [:relative-datetime -10 :day {:padded? true}] [:relative-datetime :current]]}
+  (#'normalize/normalize-tokens
+    {:filter ["BETWEEN"
+               ["field-id" 10]
+               ["relative-datetime" -10 "day" {:padded? true}]
+               ["relative-datetime" :current]]}))
+
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 

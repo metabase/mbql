@@ -47,6 +47,9 @@
    (apply s/enum #{:default :minute :hour :day :week :month :quarter :year})
    "relative-datetime-unit"))
 
+(def ^:private RelativeDatetimeOptions
+  {(s/optional-key :padded?) s/Bool}) ; default false
+
 (defn- can-parse-iso-8601? [^DateTimeFormatter formatter, ^String s]
   (when (string? s)
     (try
@@ -81,9 +84,19 @@
    "valid ISO-8601 datetime, date, or time string literal"))
 
 ;; TODO - `unit` is not allowed if `n` is `current`
-(defclause relative-datetime
-  n    (s/cond-pre (s/eq :current) s/Int)
-  unit (optional RelativeDatetimeUnit))
+(def relative-datetime
+  "Schema for a `relative-datetime` clause."
+  (s/conditional
+   (every-pred sequential? #(core/= :current (second %)))
+   [(s/one (s/eq :relative-datetime) "clause name")
+    (s/one (s/eq :current) "current")
+    (s/optional RelativeDatetimeOptions "options")]
+
+   :else
+   [(s/one (s/eq :relative-datetime) "clause name")
+    (s/one s/Int "n")
+    (s/one RelativeDatetimeUnit "unit")
+    (s/optional RelativeDatetimeOptions "options")]))
 
 (defclause interval
   n    s/Int

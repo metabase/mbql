@@ -121,10 +121,21 @@
   ;; Normalize a `relative-datetime` clause. `relative-datetime` comes in two flavors:
   ;;
   ;;   [:relative-datetime :current]
-  ;;   [:relative-datetime -10 :day] ; amount & unit"
-  [[_ amount unit]]
-  (if unit
-    [:relative-datetime amount (mbql.u/normalize-token unit)]
+  ;;   [:relative-datetime :current {:padded? false}]
+  ;;   [:relative-datetime -10 :day]
+  ;;   [:relative-datetime -10 :day {:padded? false}] ; amount & unit"
+  [[_ amount unit-or-options options]]
+  (cond
+    (and unit-or-options options)
+    [:relative-datetime amount (mbql.u/normalize-token unit-or-options) options]
+
+    (map? unit-or-options) ;; options
+    [:relative-datetime :current unit-or-options]
+
+    unit-or-options ;; unit
+    [:relative-datetime amount (mbql.u/normalize-token unit-or-options)]
+
+    :else
     [:relative-datetime :current]))
 
 (defmethod normalize-mbql-clause-tokens :interval
