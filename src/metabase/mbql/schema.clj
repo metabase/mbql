@@ -471,12 +471,13 @@
 ;;
 ;;    SUM(field_1 + field_2)
 
-(defclause ^{:requires-features #{:basic-aggregations}} avg,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,  field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} distinct, field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} sum,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} avg,       field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:quantile-aggregations}} median, field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,   field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} distinct,  field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} sum,       field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} min,       field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} max,       field-or-expression FieldOrExpressionDef)
 
 (defclause ^{:requires-features #{:basic-aggregations}} sum-where
   field-or-expression FieldOrExpressionDef, pred Filter)
@@ -520,8 +521,8 @@
 ;; ag:/ isn't a valid token
 
 (def ^:private UnnamedAggregation*
-  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where
-          sum-where))
+  (one-of count avg median cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share
+          count-where sum-where))
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))
